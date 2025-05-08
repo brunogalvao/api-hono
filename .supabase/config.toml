@@ -1,5 +1,0 @@
-project_id = "yojutfkfjxbczuxejbip"
-
-[api]
-port = 54321
-schema = "public"
