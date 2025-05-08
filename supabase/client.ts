@@ -1,5 +1,5 @@
-import { config } from "dotenv";
-config({ path: ".env.local" }); // ⚠️ isso força carregar .env.local
+// import { config } from "dotenv";
+// config({ path: ".env.local" }); // ⚠️ isso força carregar .env.local
 
 import { createClient } from "@supabase/supabase-js";
 
