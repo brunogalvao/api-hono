@@ -1,0 +1,17 @@
+{
+  "name": "api-hono-supabase-crud",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx dev.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "dotenv": "^16.3.1",
+    "hono": "^3.9.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}
