@@ -1,8 +1,7 @@
 {
   "functions": {
     "api/**/*.ts": {
-      "runtime": "edge",
-      "env": ["SUPABASE_URL", "SUPABASE_ANON_KEY"]
+      "runtime": "edge"
     }
   }
 }
