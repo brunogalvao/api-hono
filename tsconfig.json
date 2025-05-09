@@ -4,11 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "strict": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "types": [],
-    "allowSyntheticDefaultImports": true
+    "esModuleInterop": true
   },
-  "include": ["api", "supabase", "env.d.ts", "dev.ts"]
+  "include": ["api", "supabase", "env.d.ts"]
 }
