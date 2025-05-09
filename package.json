@@ -10,7 +10,7 @@
     "@hono/zod-openapi": "^0.19.6",
     "@supabase/supabase-js": "^2.49.4",
     "dotenv": "^16.3.1",
-    "hono": "^3.9.0",
+    "hono": "^4.7.9",
     "hono-openapi": "^0.4.8",
     "zod": "^3.24.4"
   },

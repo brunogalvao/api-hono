@@ -3,9 +3,12 @@ export const config = {
 };
 
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { supabase } from "../../supabase/client";
 
 const app = new Hono().basePath("/api/tasks");
+
+app.use("*", cors());
 
 app.get("/", async (c) => {
   const { data, error } = await supabase.from("tasks").select("*");
