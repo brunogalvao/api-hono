@@ -1,13 +1,17 @@
-const setup = async () => {
-  const { config } = await import("dotenv");
-  config({ path: ".env.local" });
+import { serve } from "@hono/node-server";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { swaggerUI } from "@hono/swagger-ui";
 
-  const { serve } = await import("@hono/node-server");
-  const { app } = await import("./app");
+const app = new OpenAPIHono();
 
-  serve({ fetch: app.fetch, port: 3000 });
-};
+app.doc("/doc", {
+  openapi: "3.0.0",
+  info: {
+    title: "API Local Dev CRUD",
+    version: "1.0.0",
+  },
+});
 
-setup();
+app.get("/ui", swaggerUI({ url: "/doc" }));
 
-console.log("API Rodando");
+serve({ fetch: app.fetch, port: 3000 });
