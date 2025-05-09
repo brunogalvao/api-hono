@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-// import { supabase } from "@/supabase/client";
-import { supabase } from "../../supabase/client";
+import { supabase } from "@/supabase/client";
 
 const app = new Hono();
 

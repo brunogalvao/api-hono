@@ -1,13 +1,10 @@
 import { Hono } from "hono";
-import { supabase } from "../../supabase/client";
+import { supabase } from "@/supabase/client";
 
 const app = new Hono();
 
 app.get("/", async (c) => {
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("*")
-    .order("created_at");
+  const { data, error } = await supabase.from("tasks").select("*");
   if (error) return c.json({ error: error.message }, 500);
   return c.json(data);
 });
