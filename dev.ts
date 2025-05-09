@@ -12,7 +12,7 @@ app.doc("/doc", {
   },
 });
 
-app.get("/ui", swaggerUI({ url: "/doc" }));
+app.get("/swagger-tasks", swaggerUI({ url: "/doc" }));
 
 // Exemplo de rota
 const route = createRoute({
