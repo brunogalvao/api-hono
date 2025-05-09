@@ -5,7 +5,8 @@ export const config = {
 import { Hono } from "hono";
 import { supabase } from "../../supabase/client";
 
-const app = new Hono();
+// Corrige o prefixo para funcionar no Vercel
+const app = new Hono().basePath("/api/tasks");
 
 app.put("/:id", async (c) => {
   const id = c.req.param("id");
