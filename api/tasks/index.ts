@@ -4,16 +4,20 @@ export const config = {
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { supabase } from "../../supabase/client";
+import { supabase } from "@/supabase/client";
 
 const app = new Hono().basePath("/api/tasks");
 
-// ✅ CORRETO para Edge na Vercel
-app.use(cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"] }));
+// ✅ Middleware CORS aplicado
+app.use("*", cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"] }));
 
-// 🔥 Trata a preflight request (OPTIONS)
+// ✅ Rota obrigatória para Vercel processar preflight
 app.options("/", (c) => {
-  return c.text("ok");
+  return c.text("OK", 200, {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  });
 });
 
 app.get("/", async (c) => {
@@ -29,5 +33,7 @@ app.post("/", async (c) => {
   return c.json(data[0]);
 });
 
-export const POST = app.fetch;
+// ✅ Essas três exportações são obrigatórias
 export const GET = app.fetch;
+export const POST = app.fetch;
+export const OPTIONS = app.fetch;
