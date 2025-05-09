@@ -8,7 +8,13 @@ import { supabase } from "../../supabase/client";
 
 const app = new Hono().basePath("/api/tasks");
 
-app.use("*", cors());
+// ✅ CORRETO para Edge na Vercel
+app.use(cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"] }));
+
+// 🔥 Trata a preflight request (OPTIONS)
+app.options("/", (c) => {
+  return c.text("ok");
+});
 
 app.get("/", async (c) => {
   const { data, error } = await supabase.from("tasks").select("*");
