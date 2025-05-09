@@ -23,5 +23,5 @@ app.post("/", async (c) => {
   return c.json(data[0]);
 });
 
-export const GET = app.fetch;
 export const POST = app.fetch;
+export const GET = app.fetch;
