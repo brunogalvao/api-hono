@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { OpenAPIHono } from "@hono/zod-openapi";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 
 const app = new OpenAPIHono();
@@ -15,3 +15,5 @@ app.doc("/doc", {
 app.get("/ui", swaggerUI({ url: "/doc" }));
 
 serve({ fetch: app.fetch, port: 3000 });
+
+console.log("API Rodando");
