@@ -5,7 +5,7 @@ export const config = {
 import { Hono } from "hono";
 import { supabase } from "../../supabase/client";
 
-const app = new Hono();
+const app = new Hono().basePath("/api/tasks");
 
 app.get("/", async (c) => {
   const { data, error } = await supabase.from("tasks").select("*");
