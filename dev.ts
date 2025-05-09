@@ -1,6 +1,13 @@
-import { serve } from "@hono/node-server";
-import { app } from "./app";
+const setup = async () => {
+  const { config } = await import("dotenv");
+  config({ path: ".env.local" });
 
-serve({ fetch: app.fetch, port: 3000 });
+  const { serve } = await import("@hono/node-server");
+  const { app } = await import("./app");
+
+  serve({ fetch: app.fetch, port: 3000 });
+};
+
+setup();
 
 console.log("API Rodando");
