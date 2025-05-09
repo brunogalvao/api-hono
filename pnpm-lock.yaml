@@ -21,6 +21,9 @@ importers:
         specifier: ^3.9.0
         version: 3.12.12
     devDependencies:
+      '@types/node':
+        specifier: ^22.15.17
+        version: 22.15.17
       tsx:
         specifier: ^4.7.0
         version: 4.19.4
