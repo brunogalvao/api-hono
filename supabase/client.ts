@@ -1,5 +1,4 @@
-const isLocal = !process.env.VERCEL;
-
+// Apenas carrega dotenv se estiver fora da Vercel (local)
 if (!process.env.VERCEL) {
   const { config } = await import("dotenv");
   config({ path: ".env.local" });
@@ -11,5 +10,3 @@ const url = process.env.SUPABASE_URL!;
 const key = process.env.SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(url, key);
-
-console.log("API rodando em ambiente:", process.env.NODE_ENV || "Local");
