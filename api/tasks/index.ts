@@ -1,3 +1,7 @@
+export const config = {
+  runtime: "edge",
+};
+
 import { Hono } from "hono";
 import { supabase } from "@/supabase/client";
 
