@@ -1,5 +1,5 @@
 {
-  "name": "api-hono-supabase-crud",
+  "name": "api-hono",
   "type": "module",
   "scripts": {
     "dev": "tsx dev.ts"
