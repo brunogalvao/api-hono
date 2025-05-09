@@ -11,5 +11,5 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["api", "supabase", "env.d.ts"]
+  "include": ["api", "supabase", "app.ts", "dev.ts"]
 }

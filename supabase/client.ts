@@ -1,6 +1,6 @@
 const isLocal = !process.env.VERCEL;
 
-if (isLocal) {
+if (!process.env.VERCEL) {
   const { config } = await import("dotenv");
   config({ path: ".env.local" });
 }
