@@ -1,17 +1,17 @@
-export const config = {
-  runtime: "edge",
-};
-
+import { serve } from "@hono/node-server";
 import { OpenAPIHono } from "@hono/zod-openapi";
+import { swaggerUI } from "@hono/swagger-ui";
 
 const app = new OpenAPIHono();
 
 app.doc("/doc", {
   openapi: "3.0.0",
   info: {
-    title: "API Hono Supabase CRUD",
+    title: "API Local Hono CRUD",
     version: "1.0.0",
   },
 });
 
-export const GET = app.fetch;
+app.get("/ui", swaggerUI({ url: "/doc" }));
+
+serve({ fetch: app.fetch, port: 3000 });
