@@ -1,24 +1,31 @@
 import { Hono } from "hono";
-import { supabase } from "@/supabase/client";
 
 const app = new Hono();
 
-// ⚠️ CORS headers serão tratados via vercel.json
-
-// ✅ OPTIONS handler neutro para evitar erro 500
+// Handler neutro para OPTIONS (CORS)
 app.options("/api/tasks", (c) => {
   return c.body(null, 204);
 });
 
-// ✅ GET
 app.get("/api/tasks", async (c) => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+  );
+
   const { data, error } = await supabase.from("tasks").select("*");
   if (error) return c.json({ error: error.message }, 500);
   return c.json(data);
 });
 
-// ✅ POST
 app.post("/api/tasks", async (c) => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+  );
+
   const body = await c.req.json();
   const { data, error } = await supabase.from("tasks").insert([body]).select();
   if (error) return c.json({ error: error.message }, 500);
