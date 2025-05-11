@@ -3,10 +3,9 @@ import { supabase } from "../../supabase/client";
 
 const app = new Hono().basePath("/api/tasks");
 
-// ✅ Corrige o CORS com tratamento de OPTIONS
 app.options(
   "/:id",
-  (c) =>
+  () =>
     new Response(null, {
       status: 204,
       headers: {
@@ -25,7 +24,6 @@ app.put("/:id", async (c) => {
     .update(body)
     .eq("id", id)
     .select();
-
   if (error) return c.json({ error: error.message }, 500);
   return c.json(data[0]);
 });
@@ -37,7 +35,6 @@ app.delete("/:id", async (c) => {
   return c.json({ success: true });
 });
 
-// ✅ Vercel precisa de cada método exportado separadamente
-export const OPTIONS = app.fetch;
 export const PUT = app.fetch;
 export const DELETE = app.fetch;
+export const OPTIONS = app.fetch;
