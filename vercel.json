@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/**/*.ts": {
-      "runtime": "nodejs18.x"
+      "runtime": "nodejs18.x" // este só funciona em projetos com output `functions` e build customizado
     }
   },
   "headers": [
