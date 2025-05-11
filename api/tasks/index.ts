@@ -2,10 +2,18 @@ import { Hono } from "hono";
 
 const app = new Hono();
 
-// Handler neutro para OPTIONS (CORS)
-app.options("/api/tasks", (c) => {
-  return c.body(null, 204);
-});
+app.options(
+  "/api/tasks",
+  () =>
+    new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    }),
+);
 
 app.get("/api/tasks", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
