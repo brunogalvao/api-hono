@@ -3,19 +3,21 @@ import { supabase } from "@/supabase/client";
 
 const app = new Hono();
 
-// ⚠️ NÃO use `cors()` aqui — Vercel já aplica via `vercel.json`
+// ⚠️ CORS headers serão tratados via vercel.json
 
-// ✅ handler neutro para evitar o 500
+// ✅ OPTIONS handler neutro para evitar erro 500
 app.options("/api/tasks", (c) => {
   return c.body(null, 204);
 });
 
+// ✅ GET
 app.get("/api/tasks", async (c) => {
   const { data, error } = await supabase.from("tasks").select("*");
   if (error) return c.json({ error: error.message }, 500);
   return c.json(data);
 });
 
+// ✅ POST
 app.post("/api/tasks", async (c) => {
   const body = await c.req.json();
   const { data, error } = await supabase.from("tasks").insert([body]).select();
