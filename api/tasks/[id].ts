@@ -1,8 +1,21 @@
 import { Hono } from "hono";
 import { supabase } from "../../supabase/client";
 
-// Corrige o prefixo para funcionar no Vercel
 const app = new Hono().basePath("/api/tasks");
+
+// ✅ Tratamento da requisição preflight (CORS)
+app.options(
+  "/:id",
+  () =>
+    new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    }),
+);
 
 app.put("/:id", async (c) => {
   const id = c.req.param("id");
@@ -25,3 +38,4 @@ app.delete("/:id", async (c) => {
 
 export const PUT = app.fetch;
 export const DELETE = app.fetch;
+export const OPTIONS = app.fetch;
