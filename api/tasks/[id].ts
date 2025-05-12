@@ -3,14 +3,16 @@ import { supabase } from "../../supabase/client";
 
 const app = new Hono();
 
-app.options("/:id", (c) => {
-  return c.body(null, 204, {
+// ✅ Handler para OPTIONS (CORS preflight)
+app.options("/:id", (c) =>
+  c.body(null, 204, {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-  });
-});
+  }),
+);
 
+// ✅ PUT para atualizar tarefa
 app.put("/:id", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
@@ -23,6 +25,7 @@ app.put("/:id", async (c) => {
   return c.json(data[0]);
 });
 
+// ✅ DELETE para remover tarefa
 app.delete("/:id", async (c) => {
   const id = c.req.param("id");
   const { error } = await supabase.from("tasks").delete().eq("id", id);
@@ -30,7 +33,7 @@ app.delete("/:id", async (c) => {
   return c.json({ success: true });
 });
 
-// 🔥 Exportações obrigatórias para Vercel
+// ✅ Exporte todos os handlers
 export const OPTIONS = app.fetch;
 export const PUT = app.fetch;
 export const DELETE = app.fetch;
