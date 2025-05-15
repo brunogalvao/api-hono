@@ -26,7 +26,7 @@ app.options(
 app.get("/api/tasks/total-price", async (c) => {
   const { data, error } = await supabase
     .from("tasks")
-    .select("sum:price", { head: false });
+    .select("sum(price)", { head: false });
 
   if (error) return c.json({ error: error.message }, 500);
 
