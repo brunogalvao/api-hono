@@ -1,4 +1,10 @@
 import { Hono } from "hono";
+const { createClient } = await import("@supabase/supabase-js");
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!,
+);
 
 const app = new Hono();
 
@@ -18,13 +24,6 @@ app.options(
 
 // GET: Soma da coluna "price"
 app.get("/api/tasks/total-price", async (c) => {
-  const { createClient } = await import("@supabase/supabase-js");
-
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
-  );
-
   const { data, error } = await supabase
     .from("tasks")
     .select("sum:price", { head: false });
