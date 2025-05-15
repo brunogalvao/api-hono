@@ -24,7 +24,7 @@ app.options(
 
 // GET: Soma da coluna "price"
 app.get("/api/tasks/total-price", async (c) => {
-  const { data, error } = await supabase.from("tasks").select("sprice");
+  const { data, error } = await supabase.from("tasks").select("price");
 
   if (error) return c.json({ error: error.message }, 500);
 
