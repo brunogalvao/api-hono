@@ -4,7 +4,7 @@ import { Hono } from "hono";
 const app = new Hono();
 
 app.options(
-  "/api/tasks",
+  "/api/tasks/total",
   () =>
     new Response(null, {
       status: 204,
@@ -16,7 +16,7 @@ app.options(
     }),
 );
 
-app.get("api/tasks/total", async (c) => {
+app.get("/api/tasks/total", async (c) => {
   const { count, error } = await supabase
     .from("tasks")
     .select("*", { count: "exact", head: true });
