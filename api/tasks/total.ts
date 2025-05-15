@@ -1,5 +1,10 @@
-import { supabase } from "../../supabase/client";
 import { Hono } from "hono";
+const { createClient } = await import("@supabase/supabase-js");
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!,
+);
 
 const app = new Hono();
 
