@@ -24,13 +24,12 @@ app.options(
 
 // GET: Soma da coluna "price"
 app.get("/api/tasks/total-price", async (c) => {
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("sum(price)", { head: false });
+  const { data, error } = await supabase.from("tasks").select("sprice");
 
   if (error) return c.json({ error: error.message }, 500);
 
-  const total = data?.[0]?.sum ?? 0;
+  const total =
+    data?.reduce((sum: number, item: any) => sum + (item.price || 0), 0) ?? 0;
 
   return c.json({ totalPrice: total });
 });
