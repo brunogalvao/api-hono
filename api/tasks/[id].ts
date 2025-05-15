@@ -36,4 +36,4 @@ app.delete("/api/tasks/:id", async (c) => {
 
 export const PUT = app.fetch;
 export const DELETE = app.fetch;
-export const OPTIONS = app.fetch; // ✅ necessário para exportar a rota OPTIONS
+export const OPTIONS = app.fetch;
