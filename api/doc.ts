@@ -12,6 +12,6 @@ app.doc("/doc", {
   },
 });
 
-app.get("/ui", swaggerUI({ url: "/doc" }));
+app.get("/api/ui", swaggerUI({ url: "/api/doc" }));
 
 serve({ fetch: app.fetch, port: 3000 });
