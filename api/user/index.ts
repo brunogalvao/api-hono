@@ -7,9 +7,15 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY!,
 );
 
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
+
+// App
 const app = new Hono();
 
-// CORS
+// Middleware CORS
 app.use(
   "/api/user",
   cors({
@@ -21,47 +27,53 @@ app.use(
 
 // GET /api/user
 app.get("/api/user", async (c) => {
-  const auth = c.req.header("Authorization");
-  if (!auth) return c.json({ error: "Unauthorized" }, 401);
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader) return c.json({ error: "Unauthorized" }, 401);
 
-  const token = auth.replace("Bearer ", "");
-
+  const token = authHeader.replace("Bearer ", "");
   const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return c.json({ error: "User not found" }, 404);
+
+  if (error || !data?.user) return c.json({ error: "User not found" }, 404);
+
+  const user = data.user;
 
   return c.json({
-    email: data.user.email,
-    name: data.user.user_metadata?.name ?? "",
-    phone: data.user.user_metadata?.phone ?? "",
-    avatar_url: data.user.user_metadata?.avatar_url ?? "",
+    email: user.email,
+    name: user.user_metadata?.name ?? "",
+    phone: user.user_metadata?.phone ?? "",
+    avatar_url: user.user_metadata?.avatar_url ?? "",
   });
 });
 
 // PATCH /api/user
 app.patch("/api/user", async (c) => {
-  const auth = c.req.header("Authorization");
-  if (!auth) return c.json({ error: "Unauthorized" }, 401);
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader) return c.json({ error: "Unauthorized" }, 401);
 
-  const token = auth.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "");
   const body = await c.req.json();
 
-  const { data: userData, error: getError } =
+  const { data: sessionData, error: getError } =
     await supabase.auth.getUser(token);
-  if (getError || !userData?.user)
+  if (getError || !sessionData?.user)
     return c.json({ error: "User not found" }, 404);
 
-  const { email, name, phone, avatar_url } = body;
+  const userId = sessionData.user.id;
 
-  const { data, error } = await supabase.auth.admin.updateUserById(
-    userData.user.id,
-    {
-      email, // pode ser opcional
-      user_metadata: {
-        name,
-        phone,
-        avatar_url,
-      },
+  const updatePayload: Parameters<
+    typeof supabaseAdmin.auth.admin.updateUserById
+  >[1] = {
+    email: body.email,
+    user_metadata: {
+      name: body.name,
+      phone: body.phone,
+      avatar_url: body.avatar_url,
     },
+  };
+
+  const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
+    userId,
+    updatePayload,
   );
 
   if (error) return c.json({ error: error.message }, 400);
@@ -69,7 +81,7 @@ app.patch("/api/user", async (c) => {
   return c.json({ success: true, user: data.user });
 });
 
-// Export handlers
+// Exports para Vercel
 export const GET = app.fetch;
 export const PATCH = app.fetch;
 export const OPTIONS = app.fetch;
