@@ -11,7 +11,7 @@ const app = new Hono();
 
 // ✅ Middleware de CORS global na rota /api/user/*
 app.use(
-  "/*",
+  "/api/user",
   cors({
     origin: "*",
     allowHeaders: ["Content-Type", "Authorization"],
@@ -20,7 +20,7 @@ app.use(
 );
 
 // GET perfil
-app.get("/", async (c) => {
+app.get("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
@@ -36,13 +36,18 @@ app.get("/", async (c) => {
 });
 
 // PATCH perfil
-app.patch("/", async (c) => {
+app.patch("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
   const body = await c.req.json();
 
-  const { error } = await supabase.auth.updateUser(auth, {
+  supabase.auth.setSession({
+    access_token: auth.replace("Bearer ", ""),
+    refresh_token: "",
+  });
+
+  const { data, error } = await supabase.auth.updateUser({
     email: body.email,
     data: {
       name: body.name,
