@@ -11,10 +11,5 @@
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
       ]
     }
-  ],
-  "functions": {
-    "api/user/index.ts": {
-      "runtime": "edge"
-    }
-  }
+  ]
 }
