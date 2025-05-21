@@ -80,5 +80,10 @@ app.patch("/api/user", async (c) => {
   return c.json({ success: true, user: data.user });
 });
 
-// ✅ export correto para Vercel
-export const handler = app.fetch;
+// Exportações para rotas HTTP específicas (ainda úteis para edge cases)
+export const GET = app.fetch;
+export const PATCH = app.fetch;
+export const OPTIONS = app.fetch;
+
+// ✅ Export default exigido pelo Vercel
+export default app.fetch;
