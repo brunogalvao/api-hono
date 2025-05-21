@@ -25,8 +25,8 @@ app.get("/api/user", async (c) => {
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
   const token = auth.replace("Bearer ", "");
-  const { data, error } = await supabase.auth.getUser(token);
 
+  const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return c.json({ error: "User not found" }, 404);
 
   return c.json({
@@ -45,23 +45,28 @@ app.patch("/api/user", async (c) => {
   const token = auth.replace("Bearer ", "");
   const body = await c.req.json();
 
-  supabase.auth.setSession({
-    access_token: token,
-    refresh_token: "", // pode deixar vazio
-  });
+  // get user (opcional, para validar o token)
+  const { data: userData, error: userError } =
+    await supabase.auth.getUser(token);
+  if (userError || !userData?.user) {
+    return c.json({ error: "User not found" }, 404);
+  }
 
-  const { data, error } = await supabase.auth.updateUser({
-    email: body.email,
-    data: {
-      name: body.name,
-      phone: body.phone,
-      avatar_url: body.avatar_url,
+  const { data, error } = await supabase.auth.admin.updateUserById(
+    userData.user.id,
+    {
+      email: body.email,
+      user_metadata: {
+        name: body.name,
+        phone: body.phone,
+        avatar_url: body.avatar_url,
+      },
     },
-  });
+  );
 
   if (error) return c.json({ error: error.message }, 400);
 
-  return c.json({ success: true });
+  return c.json({ success: true, user: data.user });
 });
 
 // Export handlers
