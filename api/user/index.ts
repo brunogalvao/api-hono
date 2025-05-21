@@ -9,43 +9,50 @@ const supabase = createClient(
 
 const app = new Hono();
 
-// ✅ Middleware de CORS global na rota /api/user/*
+// ✅ Middleware global de CORS para a rota /api/user
 app.use(
   "/api/user",
   cors({
     origin: "*",
     allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+    allowMethods: ["GET", "PATCH", "OPTIONS"],
   }),
 );
 
-// GET perfil
+// ✅ GET: retorna perfil do usuário autenticado
 app.get("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
-  const { data, error } = await supabase.auth.getUser(auth);
-  if (error || !data.user) return c.json({ error: "User not found" }, 404);
+  const token = auth.replace("Bearer ", "");
+  const { data, error } = await supabase.auth.getUser(token);
 
+  if (error || !data?.user) {
+    return c.json({ error: "User not found" }, 404);
+  }
+
+  const user = data.user;
   return c.json({
-    email: data.user.email,
-    name: data.user.user_metadata?.name ?? "",
-    phone: data.user.user_metadata?.phone ?? "",
-    avatar_url: data.user.user_metadata?.avatar_url ?? "",
+    email: user.email,
+    name: user.user_metadata?.name ?? "",
+    phone: user.user_metadata?.phone ?? "",
+    avatar_url: user.user_metadata?.avatar_url ?? "",
   });
 });
 
-// PATCH perfil
+// ✅ PATCH: atualiza dados do usuário autenticado
 app.patch("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
+  const token = auth.replace("Bearer ", "");
   const body = await c.req.json();
 
-  supabase.auth.setSession({
-    access_token: auth.replace("Bearer ", ""),
-    refresh_token: "",
-  });
+  const { data: userData, error: getError } =
+    await supabase.auth.getUser(token);
+  if (getError || !userData?.user) {
+    return c.json({ error: "User not found" }, 404);
+  }
 
   const { data, error } = await supabase.auth.updateUser({
     email: body.email,
@@ -61,7 +68,7 @@ app.patch("/api/user", async (c) => {
   return c.json({ success: true });
 });
 
-// ✅ Exportações corretas para Vercel
+// ✅ Exportações para Vercel
 export const GET = app.fetch;
 export const PATCH = app.fetch;
 export const OPTIONS = app.fetch;
