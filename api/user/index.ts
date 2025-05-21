@@ -47,38 +47,54 @@ app.get("/api/user", async (c) => {
 });
 
 // PATCH perfil
+// PATCH perfil
 app.patch("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
-  if (!auth) return c.json({ error: "Unauthorized" }, 401);
+  if (!auth) {
+    console.warn("PATCH sem Authorization");
+    return c.json({ error: "Unauthorized" }, 401);
+  }
 
   const token = auth.replace("Bearer ", "");
   const body = await c.req.json();
 
+  console.log("🔒 Token recebido:", token.slice(0, 10) + "...");
+
   const { data: userData, error: getError } =
     await supabase.auth.getUser(token);
-  if (getError || !userData?.user)
+
+  if (getError || !userData?.user) {
+    console.error("Erro ao buscar user:", getError);
     return c.json({ error: "User not found" }, 404);
+  }
 
   const { email, name, phone, avatar_url } = body;
 
-  const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
-    userData.user.id,
-    {
-      email,
-      user_metadata: {
-        name,
-        phone,
-        avatar_url,
-      },
-    },
-  );
+  console.log("➡️ Atualizando usuário:", userData.user.id);
 
-  if (error) {
-    console.error("Erro ao atualizar user:", error);
-    return c.json({ error: error.message }, 400);
+  try {
+    const result = await Promise.race([
+      supabaseAdmin.auth.admin.updateUserById(userData.user.id, {
+        email,
+        user_metadata: {
+          name,
+          phone,
+          avatar_url,
+        },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Timeout: Supabase não respondeu")),
+          10000,
+        ),
+      ),
+    ]);
+
+    return c.json({ success: true, user: result.data.user });
+  } catch (error) {
+    console.error("Erro no updateUserById:", error);
+    return c.json({ error: String((error as Error).message || error) }, 400);
   }
-
-  return c.json({ success: true, user: data.user });
 });
 
 // Export Vercel handlers
