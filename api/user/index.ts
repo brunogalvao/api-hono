@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { handle } from "hono/vercel";
 import { createClient } from "@supabase/supabase-js";
 
 const app = new Hono();
@@ -81,9 +82,9 @@ app.patch("/api/user", async (c) => {
 });
 
 // Exportações para rotas HTTP específicas (ainda úteis para edge cases)
-export const GET = app.fetch;
-export const PATCH = app.fetch;
-export const OPTIONS = app.fetch;
+export const GET = handle(app);
+export const PATCH = handle(app);
+export const OPTIONS = handle(app);
 
 // ✅ Export default exigido pelo Vercel
-export default app.fetch;
+export default handle(app);
