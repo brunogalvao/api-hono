@@ -1,6 +1,9 @@
+// /api/user/index.ts
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createClient } from "@supabase/supabase-js";
+
+const app = new Hono();
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -12,18 +15,16 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const app = new Hono();
-
-// ✅ CORS para toda a aplicação
+// CORS global
 app.use(
   cors({
     origin: "*",
     allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+    allowMethods: ["GET", "PATCH", "OPTIONS"],
   }),
 );
 
-// GET /api/user
+// GET perfil
 app.get("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
@@ -40,7 +41,7 @@ app.get("/api/user", async (c) => {
   });
 });
 
-// PATCH /api/user
+// PATCH perfil
 app.patch("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
@@ -48,9 +49,9 @@ app.patch("/api/user", async (c) => {
   const token = auth.replace("Bearer ", "");
   const body = await c.req.json();
 
-  const { data: userData, error: getError } =
+  const { data: userData, error: userError } =
     await supabase.auth.getUser(token);
-  if (getError || !userData?.user)
+  if (userError || !userData?.user)
     return c.json({ error: "User not found" }, 404);
 
   const { email, name, phone, avatar_url } = body;
@@ -68,5 +69,5 @@ app.patch("/api/user", async (c) => {
   return c.json({ success: true, user: data.user });
 });
 
-// ✅ CORRETO para Vercel: apenas uma exportação
+// ✅ Export único para funcionar na Vercel
 export const handler = app.fetch;
