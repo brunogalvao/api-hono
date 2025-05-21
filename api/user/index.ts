@@ -1,59 +1,41 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-const { createClient } = await import("@supabase/supabase-js");
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!,
-);
+import { createClient } from "@supabase/supabase-js";
 
 const app = new Hono();
 
-// ✅ Middleware global de CORS para a rota /api/user
+// Middleware CORS
 app.use(
   "/api/user",
   cors({
     origin: "*",
     allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "PATCH", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
   }),
 );
 
-// ✅ GET: retorna perfil do usuário autenticado
-app.get("/api/user", async (c) => {
-  const auth = c.req.header("Authorization");
-  if (!auth) return c.json({ error: "Unauthorized" }, 401);
-
-  const token = auth.replace("Bearer ", "");
-  const { data, error } = await supabase.auth.getUser(token);
-
-  if (error || !data?.user) {
-    return c.json({ error: "User not found" }, 404);
-  }
-
-  const user = data.user;
-  return c.json({
-    email: user.email,
-    name: user.user_metadata?.name ?? "",
-    phone: user.user_metadata?.phone ?? "",
-    avatar_url: user.user_metadata?.avatar_url ?? "",
-  });
-});
-
-// ✅ PATCH: atualiza dados do usuário autenticado
+// PATCH /api/user
 app.patch("/api/user", async (c) => {
-  const auth = c.req.header("Authorization");
-  if (!auth) return c.json({ error: "Unauthorized" }, 401);
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader) return c.json({ error: "Unauthorized" }, 401);
 
-  const token = auth.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "");
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    },
+  );
+
   const body = await c.req.json();
 
-  const { data: userData, error: getError } =
-    await supabase.auth.getUser(token);
-  if (getError || !userData?.user) {
-    return c.json({ error: "User not found" }, 404);
-  }
-
+  // Atualiza o usuário autenticado com o token
   const { data, error } = await supabase.auth.updateUser({
     email: body.email,
     data: {
@@ -67,8 +49,3 @@ app.patch("/api/user", async (c) => {
 
   return c.json({ success: true });
 });
-
-// ✅ Exportações para Vercel
-export const GET = app.fetch;
-export const PATCH = app.fetch;
-export const OPTIONS = app.fetch;
