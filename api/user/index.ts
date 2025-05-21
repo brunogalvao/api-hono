@@ -14,19 +14,17 @@ const supabaseAdmin = createClient(
 
 const app = new Hono();
 
-// ✅ CORS Middleware
-app.options("/api/user", (c) => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    },
-  });
-});
+// CORS global
+app.use(
+  "/api/user/*",
+  cors({
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["GET", "PATCH", "OPTIONS"],
+  }),
+);
 
-// ✅ GET /api/user
+// GET /api/user
 app.get("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
@@ -44,7 +42,7 @@ app.get("/api/user", async (c) => {
   });
 });
 
-// ✅ PATCH /api/user
+// PATCH /api/user
 app.patch("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
@@ -76,7 +74,5 @@ app.patch("/api/user", async (c) => {
   return c.json({ success: true, user: data.user });
 });
 
-// ✅ Exportação única
-export const GET = app.fetch;
-export const PATCH = app.fetch;
-export const OPTIONS = app.fetch;
+// ✅ Exporta corretamente como função única
+export const handler = app.fetch;
