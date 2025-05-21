@@ -14,13 +14,12 @@ const supabaseAdmin = createClient(
 
 const app = new Hono();
 
-// CORS global
+// ✅ CORS para toda a aplicação
 app.use(
-  "/api/user/*",
   cors({
     origin: "*",
     allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "PATCH", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
   }),
 );
 
@@ -30,7 +29,6 @@ app.get("/api/user", async (c) => {
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
   const token = auth.replace("Bearer ", "");
-
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return c.json({ error: "User not found" }, 404);
 
@@ -61,11 +59,7 @@ app.patch("/api/user", async (c) => {
     userData.user.id,
     {
       email,
-      user_metadata: {
-        name,
-        phone,
-        avatar_url,
-      },
+      user_metadata: { name, phone, avatar_url },
     },
   );
 
@@ -74,5 +68,5 @@ app.patch("/api/user", async (c) => {
   return c.json({ success: true, user: data.user });
 });
 
-// ✅ Exporta corretamente como função única
+// ✅ CORRETO para Vercel: apenas uma exportação
 export const handler = app.fetch;
