@@ -81,6 +81,11 @@ app.patch("/api/user", async (c) => {
   return c.json({ success: true, user: data.user });
 });
 
+// Fallback para qualquer OPTIONS
+app.options("/api/user", (c) => {
+  return c.text("OK", 204);
+});
+
 // Exports para Vercel
 export const GET = app.fetch;
 export const PATCH = app.fetch;
