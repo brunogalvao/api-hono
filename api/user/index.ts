@@ -45,7 +45,12 @@ app.patch("/api/user", async (c) => {
   const token = auth.replace("Bearer ", "");
   const body = await c.req.json();
 
-  const { data, error } = await supabase.auth.updateUser(token, {
+  supabase.auth.setSession({
+    access_token: token,
+    refresh_token: "", // pode deixar vazio
+  });
+
+  const { data, error } = await supabase.auth.updateUser({
     email: body.email,
     data: {
       name: body.name,
