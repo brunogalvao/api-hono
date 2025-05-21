@@ -45,21 +45,21 @@ app.patch("/api/user", async (c) => {
   const token = auth.replace("Bearer ", "");
   const body = await c.req.json();
 
-  // get user (opcional, para validar o token)
-  const { data: userData, error: userError } =
+  const { data: userData, error: getError } =
     await supabase.auth.getUser(token);
-  if (userError || !userData?.user) {
+  if (getError || !userData?.user)
     return c.json({ error: "User not found" }, 404);
-  }
+
+  const { email, name, phone, avatar_url } = body;
 
   const { data, error } = await supabase.auth.admin.updateUserById(
     userData.user.id,
     {
-      email: body.email,
+      email, // pode ser opcional
       user_metadata: {
-        name: body.name,
-        phone: body.phone,
-        avatar_url: body.avatar_url,
+        name,
+        phone,
+        avatar_url,
       },
     },
   );
