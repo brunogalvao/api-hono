@@ -26,7 +26,12 @@ app.get("/api/user", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
-  const { data, error } = await supabase.auth.getUser(auth);
+  supabase.auth.setSession({
+    access_token: auth.replace("Bearer ", ""),
+    refresh_token: "",
+  });
+
+  const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return c.json({ error: "User not found" }, 404);
 
   return c.json({
@@ -44,7 +49,12 @@ app.patch("/api/user", async (c) => {
 
   const body = await c.req.json();
 
-  const { data, error } = await supabase.auth.updateUser(auth, {
+  supabase.auth.setSession({
+    access_token: auth.replace("Bearer ", ""),
+    refresh_token: "",
+  });
+
+  const { data, error } = await supabase.auth.updateUser({
     email: body.email,
     data: {
       name: body.name,
@@ -55,7 +65,12 @@ app.patch("/api/user", async (c) => {
 
   if (error) return c.json({ error: error.message }, 400);
 
-  return c.json({ success: true });
+  return c.json({
+    email: data.user.email,
+    name: data.user.user_metadata?.name ?? "",
+    phone: data.user.user_metadata?.phone ?? "",
+    avatar_url: data.user.user_metadata?.avatar_url ?? "",
+  });
 });
 
 export const GET = app.fetch;
