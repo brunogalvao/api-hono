@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 const { createClient } = await import("@supabase/supabase-js");
 
 const supabase = createClient(
@@ -8,30 +9,22 @@ const supabase = createClient(
 
 const app = new Hono();
 
-app.options(
-  "/api/user",
-  (c) =>
-    new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
-    }),
+// ✅ Middleware de CORS global na rota /api/user/*
+app.use(
+  "/*",
+  cors({
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+  }),
 );
 
 // GET perfil
-app.get("/api/user", async (c) => {
+app.get("/", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
-  supabase.auth.setSession({
-    access_token: auth.replace("Bearer ", ""),
-    refresh_token: "",
-  });
-
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser(auth);
   if (error || !data.user) return c.json({ error: "User not found" }, 404);
 
   return c.json({
@@ -43,18 +36,13 @@ app.get("/api/user", async (c) => {
 });
 
 // PATCH perfil
-app.patch("/api/user", async (c) => {
+app.patch("/", async (c) => {
   const auth = c.req.header("Authorization");
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
   const body = await c.req.json();
 
-  supabase.auth.setSession({
-    access_token: auth.replace("Bearer ", ""),
-    refresh_token: "",
-  });
-
-  const { data, error } = await supabase.auth.updateUser({
+  const { error } = await supabase.auth.updateUser(auth, {
     email: body.email,
     data: {
       name: body.name,
@@ -65,14 +53,10 @@ app.patch("/api/user", async (c) => {
 
   if (error) return c.json({ error: error.message }, 400);
 
-  return c.json({
-    email: data.user.email,
-    name: data.user.user_metadata?.name ?? "",
-    phone: data.user.user_metadata?.phone ?? "",
-    avatar_url: data.user.user_metadata?.avatar_url ?? "",
-  });
+  return c.json({ success: true });
 });
 
+// ✅ Exportações corretas para Vercel
 export const GET = app.fetch;
 export const PATCH = app.fetch;
 export const OPTIONS = app.fetch;
