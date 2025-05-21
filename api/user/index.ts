@@ -1,11 +1,10 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { handle } from "hono/vercel";
 import { createClient } from "@supabase/supabase-js";
 
 const app = new Hono();
 
-// ENV obrigatórias no Vercel
+// Supabase Clients
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_ANON_KEY!,
@@ -16,14 +15,16 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-// CORS para toda a rota
-app.use(
-  cors({
-    origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "PATCH", "OPTIONS"],
-  }),
-);
+// ✅ CORS compatível com Vercel (manual)
+app.use(async (c, next) => {
+  c.header("Access-Control-Allow-Origin", "*");
+  c.header("Access-Control-Allow-Methods", "GET, PATCH, OPTIONS");
+  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (c.req.method === "OPTIONS") {
+    return c.body(null, 204);
+  }
+  return next();
+});
 
 // GET perfil
 app.get("/api/user", async (c) => {
@@ -31,7 +32,6 @@ app.get("/api/user", async (c) => {
   if (!auth) return c.json({ error: "Unauthorized" }, 401);
 
   const token = auth.replace("Bearer ", "");
-
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) {
     console.error("Erro ao obter user:", error);
@@ -81,10 +81,8 @@ app.patch("/api/user", async (c) => {
   return c.json({ success: true, user: data.user });
 });
 
-// Exportações para rotas HTTP específicas (ainda úteis para edge cases)
+// Export Vercel handlers
 export const GET = handle(app);
 export const PATCH = handle(app);
 export const OPTIONS = handle(app);
-
-// ✅ Export default exigido pelo Vercel
 export default handle(app);
