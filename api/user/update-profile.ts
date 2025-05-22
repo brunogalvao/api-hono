@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const app = new Hono();
 
-// Criação do client com anon key — NÃO use service_role aqui!
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_ANON_KEY!,
@@ -13,7 +12,6 @@ app.post("/api/user/update-profile", async (c) => {
   const body = await c.req.json();
   const { nome, email, phone } = body;
 
-  // Extrai o token JWT do header Authorization
   const authHeader = c.req.header("Authorization");
   const token = authHeader?.replace("Bearer ", "");
 
@@ -21,7 +19,7 @@ app.post("/api/user/update-profile", async (c) => {
     return c.json({ error: "Token não encontrado" }, 401);
   }
 
-  // Cria um client com o token do usuário
+  // Cria client com o token do usuário
   const userClient = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
@@ -34,8 +32,9 @@ app.post("/api/user/update-profile", async (c) => {
     },
   );
 
+  // Faz a atualização
   const { data, error } = await userClient.auth.updateUser({
-    data: { nome }, // Atualiza user_metadata
+    data: { nome },
     email,
     phone,
   });
@@ -44,7 +43,7 @@ app.post("/api/user/update-profile", async (c) => {
     return c.json({ error: error.message }, 400);
   }
 
-  return c.json({ message: "Perfil atualizado com sucesso!", user: data.user });
+  return c.json({ message: "Usuário atualizado com sucesso", user: data.user });
 });
 
 export default app;
