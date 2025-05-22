@@ -10,11 +10,6 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY!,
 );
 
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
 // ✅ CORS compatível com Vercel (manual)
 app.use(async (c, next) => {
   c.header("Access-Control-Allow-Origin", "*");
@@ -56,41 +51,47 @@ app.patch("/api/user", async (c) => {
 
   const token = auth.replace("Bearer ", "");
   const body = await c.req.json();
+  const { email, name, phone, avatar_url } = body;
 
   console.log("🔐 PATCH /api/user");
   console.log("🧪 Token recebido:", token.slice(0, 20), "...");
 
+  // Cria client com token do usuário logado
+  const client = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    },
+  );
+
   try {
-    const { data: userData, error: getUserError } =
-      await supabase.auth.getUser(token);
-    if (getUserError || !userData?.user) {
-      console.error("❌ Erro ao buscar usuário:", getUserError?.message);
-      return c.json({ error: "User not found" }, 404);
+    const { data, error } = await client.auth.updateUser({
+      email,
+      phone,
+      data: {
+        name,
+        phone,
+        avatar_url,
+      },
+    });
+
+    if (error) {
+      console.error("❌ Erro no updateUser:", error.message);
+      return c.json({ error: error.message }, 400);
     }
 
-    const { email, name, phone, avatar_url } = body;
-
-    // Timeout explícito
-    const result = await Promise.race([
-      supabaseAdmin.auth.admin.updateUserById(userData.user.id, {
-        email,
-        user_metadata: { name, phone, avatar_url },
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Timeout: Supabase não respondeu")),
-          7000,
-        ),
-      ),
-    ]);
-
-    console.log("✅ Atualização bem-sucedida");
-    return c.json({ success: true, user: (result as any).data.user });
+    console.log("✅ Usuário atualizado com sucesso");
+    return c.json({ success: true, user: data.user });
   } catch (error) {
-    console.error("❌ Erro ao atualizar usuário:", error);
+    console.error("❌ Erro inesperado:", error);
     return c.json(
       { error: (error as Error).message || "Erro inesperado" },
-      400,
+      500,
     );
   }
 });
