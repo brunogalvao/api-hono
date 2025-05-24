@@ -26,7 +26,7 @@ app.get("/api/income", async (c) => {
     process.env.SUPABASE_ANON_KEY!,
   );
 
-  const { data, error } = await supabase.from("incomes").select("*");
+  const { data, error } = await supabase.from("incomes").select("*"); // ← aqui com "incomes"
   if (error) return c.json({ error: error.message }, 500);
   return c.json(data);
 });
