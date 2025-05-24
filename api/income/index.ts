@@ -71,3 +71,4 @@ app.post("/api/income", async (c) => {
 export const GET = app.fetch;
 export const POST = app.fetch;
 export const OPTIONS = app.fetch;
+export default app.fetch;
