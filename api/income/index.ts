@@ -6,8 +6,9 @@ export const config = {
 
 const app = new Hono();
 
+// CORS
 app.options(
-  "/api/income",
+  "/",
   () =>
     new Response(null, {
       status: 204,
@@ -19,7 +20,8 @@ app.options(
     }),
 );
 
-app.get("/api/income", async (c) => {
+// GET rendimentos
+app.get("/", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(
     process.env.SUPABASE_URL!,
@@ -31,7 +33,8 @@ app.get("/api/income", async (c) => {
   return c.json(data);
 });
 
-app.post("/api/income", async (c) => {
+// POST rendimento
+app.post("/", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
   const token = c.req.header("Authorization")?.replace("Bearer ", "");
 
