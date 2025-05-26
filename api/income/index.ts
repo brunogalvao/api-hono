@@ -4,8 +4,10 @@ const app = new Hono();
 
 // 🔍 Log de path
 app.use("*", async (c, next) => {
+  const url = new URL(c.req.url);
+
   console.log("🔎 MÉTODO:", c.req.method);
-  console.log("🔎 PATH:", c.req.path);
+  console.log("🔎 PATH:", url.pathname);
   console.log("🔎 URL:", c.req.url);
   await next();
 });
@@ -25,16 +27,46 @@ app.options(
 );
 
 // GET rendimentos
-app.get("/api/income", async (c) => {
+app.get("/", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
+
+  // Log da requisição com segurança
+  const url = new URL(c.req.url);
+  console.log("🔎 MÉTODO:", c.req.method);
+  console.log("🔎 PATH:", url.pathname);
+  console.log("🔎 URL:", c.req.url);
+
+  // Cria o Supabase client
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
   );
 
-  const { data, error } = await supabase.from("incomes").select("*");
-  if (error) return c.json({ error: error.message }, 500);
-  return c.json(data);
+  try {
+    // Timeout de 7s no SELECT
+    const result = await Promise.race([
+      supabase.from("incomes").select("*"),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("⏱ Timeout: Supabase não respondeu")),
+          7000,
+        ),
+      ),
+    ]);
+
+    const { data, error } = result as { data: any; error: any };
+
+    if (error) {
+      console.error("❌ Erro Supabase:", error);
+      return c.json({ error: error.message }, 500);
+    }
+
+    console.log("✅ Registros retornados:", data.length);
+    return c.json(data);
+  } catch (err: any) {
+    console.error("💥 Erro inesperado:", err.message || err);
+    return c.json({ error: err.message || "Erro inesperado" }, 500);
+  }
 });
 
 // POST rendimento
