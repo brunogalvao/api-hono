@@ -104,7 +104,7 @@ app.patch("/api/incomes", async (c) => {
 });
 
 // ✅ DELETE - remove rendimento por ID
-app.delete("/", async (c) => {
+app.delete("/api/incomes", async (c) => {
   const token = c.req.header("Authorization")?.replace("Bearer ", "");
   if (!token) return c.json({ error: "Token ausente" }, 401);
 
