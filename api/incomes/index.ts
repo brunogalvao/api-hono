@@ -47,7 +47,7 @@ app.get("/api/incomes", async (c) => {
 });
 
 // ✅ POST - cria novo rendimento
-app.post("/", async (c) => {
+app.post("/api/incomes", async (c) => {
   const token = c.req.header("Authorization")?.replace("Bearer ", "");
   if (!token) return c.json({ error: "Token ausente" }, 401);
 
@@ -79,7 +79,7 @@ app.post("/", async (c) => {
 });
 
 // ✅ PATCH - atualiza rendimento existente
-app.patch("/", async (c) => {
+app.patch("/api/incomes", async (c) => {
   const token = c.req.header("Authorization")?.replace("Bearer ", "");
   if (!token) return c.json({ error: "Token ausente" }, 401);
 
