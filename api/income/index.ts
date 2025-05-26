@@ -4,7 +4,9 @@ const app = new Hono();
 
 // 🔍 Log de path
 app.use("*", async (c, next) => {
-  console.log(`📦 ${c.req.method} → ${c.req.path}`);
+  console.log("🔎 MÉTODO:", c.req.method);
+  console.log("🔎 PATH:", c.req.path);
+  console.log("🔎 URL:", c.req.url);
   await next();
 });
 
