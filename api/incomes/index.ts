@@ -4,6 +4,18 @@ export const config = { runtime: "edge" };
 
 const app = new Hono();
 
+// ✅ Rota OPTIONS necessária para CORS
+app.options("/api/incomes", () => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+});
+
 app.get("/api/incomes", async (c) => {
   console.log("🔍 ROTA incomes ativada");
 
@@ -34,4 +46,5 @@ app.get("/api/incomes", async (c) => {
 });
 
 export const GET = app.fetch;
+export const OPTIONS = app.fetch;
 export default app.fetch;
