@@ -16,6 +16,7 @@ app.options("/api/incomes", () => {
   });
 });
 
+// ✅ GET - listar rendimento
 app.get("/api/incomes", async (c) => {
   console.log("🔍 ROTA incomes ativada");
 
@@ -45,6 +46,65 @@ app.get("/api/incomes", async (c) => {
   return c.json(data);
 });
 
+// ✅ POST - cria novo rendimento
+app.post("/", async (c) => {
+  const token = c.req.header("Authorization")?.replace("Bearer ", "");
+  if (!token) return c.json({ error: "Token ausente" }, 401);
+
+  const { descricao, valor, mes, ano } = await c.req.json();
+  if (!valor || !mes || !ano)
+    return c.json({ error: "Campos obrigatórios ausentes" }, 400);
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } },
+  );
+
+  const { data: userData, error: userError } =
+    await supabase.auth.getUser(token);
+  if (userError || !userData?.user)
+    return c.json({ error: "Usuário inválido" }, 401);
+
+  const uid = userData.user.id;
+
+  const { data, error } = await supabase
+    .from("incomes")
+    .insert([{ user_id: uid, descricao, valor, mes, ano }])
+    .select();
+
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json(data?.[0]);
+});
+
+// ✅ PATCH - atualiza rendimento existente
+app.patch("/", async (c) => {
+  const token = c.req.header("Authorization")?.replace("Bearer ", "");
+  if (!token) return c.json({ error: "Token ausente" }, 401);
+
+  const { id, descricao, valor, mes, ano } = await c.req.json();
+  if (!id) return c.json({ error: "ID do rendimento ausente" }, 400);
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } },
+  );
+
+  const { data, error } = await supabase
+    .from("incomes")
+    .update({ descricao, valor, mes, ano })
+    .eq("id", id)
+    .select();
+
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json(data?.[0]);
+});
+
 export const GET = app.fetch;
+export const POST = app.fetch;
+export const PATCH = app.fetch;
 export const OPTIONS = app.fetch;
 export default app.fetch;
