@@ -1,14 +1,16 @@
 import { Hono } from "hono";
 
-export const config = {
-  runtime: "edge",
-};
-
 const app = new Hono();
+
+// 🔍 Log de path
+app.use("*", async (c, next) => {
+  console.log(`📦 ${c.req.method} → ${c.req.path}`);
+  await next();
+});
 
 // CORS
 app.options(
-  "/",
+  "/api/income",
   () =>
     new Response(null, {
       status: 204,
@@ -21,7 +23,7 @@ app.options(
 );
 
 // GET rendimentos
-app.get("/", async (c) => {
+app.get("/api/income", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(
     process.env.SUPABASE_URL!,
@@ -34,7 +36,7 @@ app.get("/", async (c) => {
 });
 
 // POST rendimento
-app.post("/", async (c) => {
+app.post("/api/income", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
   const token = c.req.header("Authorization")?.replace("Bearer ", "");
 
