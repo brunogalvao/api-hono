@@ -18,14 +18,12 @@ const getSupabase = async (token?: string) => {
 
 // ✅ GET /api/incomes → lista todos os rendimentos
 app.get("/api/incomes", async (c) => {
-  const supabase = await getSupabase();
+  const token = c.req.header("Authorization")?.replace("Bearer ", "");
+  const supabase = await getSupabase(token);
+
   const { data, error } = await supabase.from("incomes").select("*");
 
-  if (error) {
-    console.error("❌ Supabase GET error:", error);
-    return c.json({ error: error.message }, 500);
-  }
-
+  if (error) return c.json({ error: error.message }, 500);
   return c.json(data);
 });
 
