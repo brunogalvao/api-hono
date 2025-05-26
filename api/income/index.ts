@@ -4,7 +4,7 @@ const app = new Hono();
 
 // 🔍 Log de path
 app.use("*", async (c, next) => {
-  const url = new URL(c.req.url);
+  const url = new URL(c.req.url, "http://localhost"); // usa base fictícia
 
   console.log("🔎 MÉTODO:", c.req.method);
   console.log("🔎 PATH:", url.pathname);
@@ -30,20 +30,18 @@ app.options(
 app.get("/", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
 
-  // Log da requisição com segurança
-  const url = new URL(c.req.url);
+  // Corrige o uso do URL
+  const url = new URL(c.req.url, "http://localhost");
   console.log("🔎 MÉTODO:", c.req.method);
   console.log("🔎 PATH:", url.pathname);
-  console.log("🔎 URL:", c.req.url);
+  console.log("🔎 URL:", url.toString());
 
-  // Cria o Supabase client
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
   );
 
   try {
-    // Timeout de 7s no SELECT
     const result = await Promise.race([
       supabase.from("incomes").select("*"),
       new Promise((_, reject) =>
