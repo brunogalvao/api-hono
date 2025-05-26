@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 
 export const config = {
-  runtime: "nodejs", // troca de edge para nodejs
+  runtime: "edge", // troca de edge para nodejs
 };
 
 const app = new Hono();
