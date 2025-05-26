@@ -103,8 +103,35 @@ app.patch("/api/incomes", async (c) => {
   return c.json(data?.[0]);
 });
 
+// ✅ DELETE - remove rendimento por ID
+app.delete("/", async (c) => {
+  const token = c.req.header("Authorization")?.replace("Bearer ", "");
+  if (!token) return c.json({ error: "Token ausente" }, 401);
+
+  const { id } = await c.req.json();
+  if (!id) return c.json({ error: "ID do rendimento ausente" }, 400);
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    },
+  );
+
+  const { error } = await supabase.from("incomes").delete().eq("id", id);
+
+  if (error) return c.json({ error: error.message }, 500);
+
+  return c.json({ success: true });
+});
+
 export const GET = app.fetch;
 export const POST = app.fetch;
 export const PATCH = app.fetch;
+export const DELETE = app.fetch;
 export const OPTIONS = app.fetch;
 export default app.fetch;
