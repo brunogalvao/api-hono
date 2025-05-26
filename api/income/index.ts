@@ -1,5 +1,9 @@
 import { Hono } from "hono";
 
+export const config = {
+  runtime: "nodejs", // troca de edge para nodejs
+};
+
 const app = new Hono();
 
 // 🔍 Log de path
@@ -30,7 +34,6 @@ app.options(
 app.get("/", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
 
-  // Corrige o uso do URL
   const url = new URL(c.req.url, "http://localhost");
   console.log("🔎 MÉTODO:", c.req.method);
   console.log("🔎 PATH:", url.pathname);
