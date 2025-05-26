@@ -7,13 +7,16 @@ const app = new Hono();
 // Supabase Client Helper
 const getSupabase = async (token?: string) => {
   const { createClient } = await import("@supabase/supabase-js");
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
-    token
-      ? { global: { headers: { Authorization: `Bearer ${token}` } } }
+
+  const key = token
+    ? process.env.SUPABASE_SERVICE_ROLE_KEY! // 🔑 chave que consegue validar token do usuário
+    : process.env.SUPABASE_ANON_KEY!;
+
+  return createClient(process.env.SUPABASE_URL!, key, {
+    global: token
+      ? { headers: { Authorization: `Bearer ${token}` } }
       : undefined,
-  );
+  });
 };
 
 // ✅ GET /api/incomes → lista todos os rendimentos
