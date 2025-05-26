@@ -24,9 +24,16 @@ app.get("/api/incomes", async (c) => {
   const token = c.req.header("Authorization")?.replace("Bearer ", "");
   const supabase = await getSupabase(token);
 
+  console.log("🪪 Token recebido:", token);
+
   const { data, error } = await supabase.from("incomes").select("*");
 
-  if (error) return c.json({ error: error.message }, 500);
+  if (error) {
+    console.error("❌ Erro ao buscar rendimentos:", error);
+    return c.json({ error: error.message }, 500);
+  }
+
+  console.log("📊 Incomes retornados:", data);
   return c.json(data);
 });
 
