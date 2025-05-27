@@ -1,53 +1,79 @@
-# **API Hono + Supabase**
+# 🧠 API Financeira – Hono + Supabase
 
-Aqui será a api com Hono + Supabase CLI.
+API de controle financeiro pessoal com autenticação via Supabase, desenvolvida com [Hono](https://hono.dev/), hospedada na [Vercel](https://vercel.com).
 
+## 🚀 Tecnologias
 
-### **Vercel**
+- [Hono](https://hono.dev/) — Framework leve e rápido para APIs
+- [Supabase](https://supabase.com/) — Auth + banco PostgreSQL + RLS
+- [Zod](https://github.com/colinhacks/zod) — Validações e schemas
+- [OpenAPI](https://hono.dev/extensions/openapi) — Documentação automática (Swagger)
+- [Vercel Edge Functions](https://vercel.com/docs/functions/edge-functions) — Deploy serverless global
 
-URL publicada na vercel.
-
-```
-https://api-hono-jet.vercel.app/api/tasks
-```
-
-### **Swagger Local**
-
-- Swagger
+## 📂 Estrutura
 
 ```
-http://localhost:3000/swagger-tasks
+api/
+  ├─ incomes/
+  │   └─ index.ts     # Rota: /api/incomes
+  ├─ tasks/
+  │   └─ index.ts     # Rota: /api/tasks
 ```
 
-- DOC
+## 🔐 Autenticação
 
-```
-http://localhost:3000/doc
-```
+Todas as rotas protegidas utilizam token JWT do Supabase (access_token).
 
-### **Tag MD**
+Você deve enviar no header:
 
-```
-https://docs.github.com/pt/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#lists
+```http
+Authorization: Bearer SEU_ACCESS_TOKEN
 ```
 
-## **Comando Supabase CLI**
+---
 
-Aqui alguns comando básico do supabase CLI.
 
-- Criando uma migration.
+## 🛠️ Rodando localmente
+
+```bash
+pnpm install
+pnpm dev
 ```
-supabase migration new add-price-to-tasks
+
+### Requisitos
+
+- Node 18+
+- Variáveis `.env`:
+
+```env
+VITE_SUPABASE_URL=https://<projeto>.supabase.co
+VITE_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
 ```
-- Migration banco Remoto.
+
+---
+
+## 🌐 Deploy
+
+Este projeto está publicado automaticamente via [Vercel](https://vercel.com):
+
+📡 Produção: [https://api-hono-jet.vercel.app/api/incomes](https://api-hono-jet.vercel.app/api/incomes)
+
+---
+
+## 🧪 Swagger / OpenAPI
+
+Se quiser ativar a documentação Swagger com Hono + OpenAPI:
+
+```bash
+# exemplo de rota
+GET /api/docs
 ```
-supabase db push
-```
-- Migration banco Local.
-```
-supabase start
-# depois
-supabase db reset  # se quiser resetar tudo
-# ou
-supabase db push   # se quiser aplicar incrementalmente
-```
+
+> (⚠️ precisa configurar `@hono/swagger-ui` e os schemas via `zod`)
+
+---
+
+## 📄 Licença
+
+MIT — Bruno Galvão
