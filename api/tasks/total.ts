@@ -1,32 +1,32 @@
 import { Hono } from "hono";
-const { createClient } = await import("@supabase/supabase-js");
+import { handleOptions } from "../config/apiHeader";
+import { createClientWithAuth } from "../config/creatClient";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!,
-);
+export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-// CORS para a rota total
-app.options(
-  "/api/tasks/total",
-  () =>
-    new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    }),
-);
+// CORS
+app.options("/api/tasks/total", () => handleOptions());
 
-// ✅ Corrige o caminho da rota
+// GET /api/tasks/total – conta apenas tarefas do usuário logado
 app.get("/api/tasks/total", async (c) => {
+  const token = c.req.header("Authorization");
+  const supabase = createClientWithAuth(token);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return c.json({ error: "Usuário não autenticado." }, 401);
+  }
+
   const { count, error } = await supabase
     .from("tasks")
-    .select("*", { count: "exact", head: true });
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
 
   if (error) return c.json({ error: error.message }, 500);
   return c.json({ total: count ?? 0 });

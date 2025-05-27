@@ -1,30 +1,32 @@
 import { Hono } from "hono";
-const { createClient } = await import("@supabase/supabase-js");
+import { handleOptions } from "../config/apiHeader";
+import { createClientWithAuth } from "../config/creatClient";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!,
-);
+export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-// CORS para a rota total-price
-app.options(
-  "/api/tasks/total-price",
-  () =>
-    new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    }),
-);
+// CORS
+app.options("/api/tasks/total-price", () => handleOptions());
 
-// GET: Soma da coluna "price"
+// GET /api/tasks/total-price – soma apenas tarefas do usuário autenticado
 app.get("/api/tasks/total-price", async (c) => {
-  const { data, error } = await supabase.from("tasks").select("price");
+  const token = c.req.header("Authorization");
+  const supabase = createClientWithAuth(token);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return c.json({ error: "Usuário não autenticado." }, 401);
+  }
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("price")
+    .eq("user_id", user.id);
 
   if (error) return c.json({ error: error.message }, 500);
 
