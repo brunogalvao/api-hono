@@ -1,19 +1,23 @@
 import { Hono } from "hono";
+import { handleOptions } from "../config/apiHeader";
 
 const app = new Hono();
 
-app.options(
-  "/api/tasks",
-  () =>
-    new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    }),
-);
+// app.options(
+//   "/api/tasks",
+//   () =>
+//     new Response(null, {
+//       status: 204,
+//       headers: {
+//         "Access-Control-Allow-Origin": "*",
+//         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+//         "Access-Control-Allow-Headers": "Content-Type",
+//       },
+//     }),
+// );
+
+// ✅ Rota OPTIONS necessária para CORS
+app.options("/api/incomes", () => handleOptions());
 
 app.get("/api/tasks", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");

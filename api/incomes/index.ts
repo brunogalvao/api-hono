@@ -6,16 +6,6 @@ export const config = { runtime: "edge" };
 const app = new Hono();
 
 // ✅ Rota OPTIONS necessária para CORS
-// app.options("/api/incomes", () => {
-//   return new Response(null, {
-//     status: 204,
-//     headers: {
-//       "Access-Control-Allow-Origin": "*",
-//       "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE",
-//       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-//     },
-//   });
-// });
 app.options("/api/incomes", () => handleOptions());
 
 // ✅ GET - listar rendimento
