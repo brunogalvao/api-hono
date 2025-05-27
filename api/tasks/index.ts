@@ -17,7 +17,7 @@ const app = new Hono();
 // );
 
 // ✅ Rota OPTIONS necessária para CORS
-app.options("/api/incomes", () => handleOptions());
+app.options("/api/tasks", () => handleOptions());
 
 app.get("/api/tasks", async (c) => {
   const { createClient } = await import("@supabase/supabase-js");
