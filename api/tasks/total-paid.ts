@@ -9,7 +9,6 @@ const app = new Hono();
 // CORS
 app.options("/api/tasks/total-paid", () => handleOptions());
 
-// GET /api/tasks/total-paid – soma o valor das tarefas marcadas como feitas (done = true)
 app.get("/api/tasks/total-paid", async (c) => {
   try {
     const token = c.req.header("Authorization");
@@ -36,9 +35,13 @@ app.get("/api/tasks/total-paid", async (c) => {
       return c.json({ error: error.message }, 500);
     }
 
-    const totalPago = data?.reduce((acc, item) => acc + (item.valor ?? 0), 0);
+    if (!Array.isArray(data)) {
+      console.error("Dados retornados não são uma lista:", data);
+      return c.json({ error: "Dados inválidos." }, 500);
+    }
 
-    return c.json({ total_paid: totalPago ?? 0 });
+    const totalPago = data.reduce((acc, item) => acc + (item.valor ?? 0), 0);
+    return c.json({ total_paid: totalPago });
   } catch (e: any) {
     console.error("Erro inesperado:", e.message);
     return c.json({ error: "Erro interno no servidor." }, 500);
