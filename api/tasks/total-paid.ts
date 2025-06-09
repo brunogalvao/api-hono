@@ -26,7 +26,7 @@ app.get("/api/tasks/total-paid", async (c) => {
 
     const { data, error } = await supabase
       .from("tasks")
-      .select("valor")
+      .select("price")
       .eq("user_id", user.id)
       .eq("done", true);
 
@@ -40,7 +40,7 @@ app.get("/api/tasks/total-paid", async (c) => {
       return c.json({ error: "Dados inválidos." }, 500);
     }
 
-    const totalPago = data.reduce((acc, item) => acc + (item.valor ?? 0), 0);
+    const totalPago = data.reduce((acc, item) => acc + (item.price ?? 0), 0);
     return c.json({ total_paid: totalPago });
   } catch (e: any) {
     console.error("Erro inesperado:", e.message);
