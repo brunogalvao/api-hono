@@ -8,6 +8,9 @@ const app = new Hono();
 // ✅ Rota OPTIONS necessária para CORS
 app.options("/api/incomes", () => handleOptions());
 
+// ✅ Rota OPTIONS necessária para CORS - Delete
+app.options("/api/incomes/:id", () => handleOptions());
+
 // ✅ GET - listar rendimento
 app.get("/api/incomes", async (c) => {
   console.log("🔍 ROTA incomes ativada");
@@ -134,6 +137,9 @@ app.delete("/api/incomes/:id", async (c) => {
 
   return c.json({ success: true });
 });
+
+// ✅ CORS para rota dinâmica DELETE
+app.options("/api/incomes/:id", () => handleOptions());
 
 export const GET = app.fetch;
 export const POST = app.fetch;
