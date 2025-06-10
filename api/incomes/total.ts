@@ -6,13 +6,13 @@ export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-const buildPath = (table: string, url: string) => `/api/${table}/${url}`;
+const pathTotalIncomes = "/api/incomes/total-incomes";
 
 // CORS para a rota correta
-app.options(buildPath("incomes", "total-incomes"), () => handleOptions());
+app.options(pathTotalIncomes, () => handleOptions());
 
 // GET da rota
-app.get(buildPath("incomes", "total-incomes"), async (c) => {
+app.get(pathTotalIncomes, async (c) => {
   try {
     const token = c.req.header("Authorization");
     const supabase = createClientWithAuth(token);
