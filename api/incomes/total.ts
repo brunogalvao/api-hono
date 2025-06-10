@@ -24,7 +24,7 @@ app.get("/api/income/total-incomes", async (c) => {
     }
 
     const { data, error } = await supabase
-      .from("rendimentos") // sua tabela
+      .from("incomes") // sua tabela
       .select("valor")
       .eq("user_id", user.id);
 
