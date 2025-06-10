@@ -6,9 +6,16 @@ export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-// CORS
-app.options("/api/income/total-incomes", () => handleOptions());
+// const url = "total-incomes";
+// const table = "incomes";
 
+const buildPath = (table: string, url: string) => `/api/${table}/${url}`;
+
+// CORS para a rota correta
+app.options(buildPath("incomes", "total-incomes"), () => handleOptions());
+// app.options(`/api/${table}/${url}`, () => handleOptions());
+
+// GET da rota
 app.get("/api/income/total-incomes", async (c) => {
   try {
     const token = c.req.header("Authorization");
@@ -24,19 +31,17 @@ app.get("/api/income/total-incomes", async (c) => {
     }
 
     const { data, error } = await supabase
-      .from("incomes") // sua tabela
+      .from("incomes")
       .select("valor")
       .eq("user_id", user.id);
 
     if (error) {
-      console.error("Erro ao buscar rendimentos:", error.message);
       return c.json({ error: error.message }, 500);
     }
 
     const total = data.reduce((acc, item) => acc + (item.valor ?? 0), 0);
     return c.json({ total_incomes: total });
   } catch (e: any) {
-    console.error("Erro inesperado:", e.message);
     return c.json({ error: "Erro interno no servidor." }, 500);
   }
 });
