@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { handleOptions } from "../config/apiHeader";
-import { createClientWithAuth } from "../config/creatClient";
 
 export const config = { runtime: "edge" };
 
@@ -8,51 +7,51 @@ const app = new Hono();
 
 const path = "/api/incomes/total-incomes";
 
-// Tratamento de requisição OPTIONS para CORS
+// ✅ OPTIONS para CORS
 app.options(path, () => handleOptions());
 
-// Rota GET para somar os rendimentos
+// ✅ GET - Total de rendimentos
 app.get(path, async (c) => {
-  try {
-    const token = c.req.header("Authorization");
-    const supabase = createClientWithAuth(token);
+  const token = c.req.header("Authorization")?.replace("Bearer ", "");
+  if (!token) return c.json({ error: "Token ausente" }, 401);
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    },
+  );
 
-    if (authError || !user) {
-      console.error("Erro de autenticação:", authError?.message);
-      return c.json({ error: "Usuário não autenticado." }, 401);
-    }
+  const { data: userData, error: userError } =
+    await supabase.auth.getUser(token);
+  if (userError || !userData?.user)
+    return c.json({ error: "Usuário inválido" }, 401);
 
-    const { data, error } = await supabase
-      .from("incomes")
-      .select("valor")
-      .eq("user_id", user.id);
+  const uid = userData.user.id;
 
-    if (error) {
-      console.error("Erro ao buscar rendimentos:", error.message);
-      return c.json({ error: error.message }, 500);
-    }
+  const { data, error } = await supabase
+    .from("incomes")
+    .select("valor")
+    .eq("user_id", uid);
 
-    if (!Array.isArray(data)) {
-      console.error("Dados retornados não são uma lista:", data);
-      return c.json({ error: "Dados inválidos." }, 500);
-    }
-
-    const totalRendimento = data.reduce(
-      (acc, item) => acc + (item.valor ?? 0),
-      0,
-    );
-
-    return c.json({ total_incomes: totalRendimento });
-  } catch (e: any) {
-    console.error("Erro inesperado:", e.message);
-    return c.json({ error: "Erro interno no servidor." }, 500);
+  if (error) {
+    console.error("❌ Erro ao buscar rendimentos:", error.message);
+    return c.json({ error: error.message }, 500);
   }
+
+  if (!Array.isArray(data)) {
+    return c.json({ error: "Dados inválidos" }, 500);
+  }
+
+  const total = data.reduce((acc, item) => acc + (item.valor ?? 0), 0);
+
+  return c.json({ total_incomes: total });
 });
 
-// ✅ Exporta apenas o handler padrão
+export const GET = app.fetch;
+export const OPTIONS = app.fetch;
 export default app.fetch;
