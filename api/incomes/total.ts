@@ -1,16 +1,16 @@
 import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
+import { handleOptions } from "../config/apiHeader"; // ajuste se for caminho relativo
 import { createClientWithAuth } from "../config/creatClient";
 
 export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-// CORS para a rota correta
-app.options("/api/incomes/total-incomes", () => handleOptions());
+const path = "/api/incomes/total-incomes";
 
-// GET da rota
-app.get("/api/incomes/total-incomes", async (c) => {
+app.options(path, () => handleOptions());
+
+app.get(path, async (c) => {
   try {
     const token = c.req.header("Authorization");
     const supabase = createClientWithAuth(token);
@@ -40,6 +40,4 @@ app.get("/api/incomes/total-incomes", async (c) => {
   }
 });
 
-export const GET = app.fetch;
-export const OPTIONS = app.fetch;
 export default app.fetch;
