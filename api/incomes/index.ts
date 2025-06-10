@@ -10,8 +10,6 @@ app.options("/api/incomes", () => handleOptions());
 
 // ✅ GET - listar rendimento
 app.get("/api/incomes", async (c) => {
-  console.log("🔍 ROTA incomes ativada");
-
   const token = c.req.header("Authorization")?.replace("Bearer ", "");
   if (!token) return c.json({ error: "Token ausente" }, 401);
 
