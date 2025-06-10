@@ -7,10 +7,10 @@ const app = new Hono();
 
 const path = "/api/incomes/total-incomes";
 
-// ✅ OPTIONS para CORS
+// ✅ REGISTRA ROTA OPTIONS PARA CORS
 app.options(path, () => handleOptions());
 
-// ✅ GET - Total de rendimentos
+// ✅ ROTA GET - retorna total de rendimentos
 app.get(path, async (c) => {
   const token = c.req.header("Authorization")?.replace("Bearer ", "");
   if (!token) return c.json({ error: "Token ausente" }, 401);
@@ -38,16 +38,9 @@ app.get(path, async (c) => {
     .select("valor")
     .eq("user_id", uid);
 
-  if (error) {
-    console.error("❌ Erro ao buscar rendimentos:", error.message);
-    return c.json({ error: error.message }, 500);
-  }
+  if (error) return c.json({ error: error.message }, 500);
 
-  if (!Array.isArray(data)) {
-    return c.json({ error: "Dados inválidos" }, 500);
-  }
-
-  const total = data.reduce((acc, item) => acc + (item.valor ?? 0), 0);
+  const total = data?.reduce((acc, item) => acc + (item.valor ?? 0), 0) ?? 0;
 
   return c.json({ total_incomes: total });
 });
