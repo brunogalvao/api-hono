@@ -8,9 +8,6 @@ const app = new Hono();
 // ✅ Rota OPTIONS necessária para CORS
 app.options("/api/incomes", () => handleOptions());
 
-// ✅ Rota Incomes OPTIONS necessária para CORS
-app.options("/api/incomes/total-incomes", () => handleOptions());
-
 // ✅ GET - listar rendimento
 app.get("/api/incomes", async (c) => {
   console.log("🔍 ROTA incomes ativada");
@@ -136,44 +133,6 @@ app.delete("/api/incomes/:id", async (c) => {
   if (error) return c.json({ error: error.message }, 500);
 
   return c.json({ success: true });
-});
-
-// ✅ GET - retorna total de rendimentos do usuário autenticado
-app.get("/api/incomes/total-incomes", async (c) => {
-  const token = c.req.header("Authorization")?.replace("Bearer ", "");
-  if (!token) return c.json({ error: "Token ausente" }, 401);
-
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    },
-  );
-
-  const { data: userData, error: userError } =
-    await supabase.auth.getUser(token);
-  if (userError || !userData?.user)
-    return c.json({ error: "Usuário inválido" }, 401);
-
-  const uid = userData.user.id;
-
-  const { data, error } = await supabase
-    .from("incomes")
-    .select("valor")
-    .eq("user_id", uid);
-
-  if (error) {
-    console.error("❌ Erro ao buscar rendimentos:", error.message);
-    return c.json({ error: error.message }, 500);
-  }
-
-  const total = data?.reduce((acc, item) => acc + (item.valor ?? 0), 0) ?? 0;
-
-  return c.json({ total_incomes: total });
 });
 
 export const GET = app.fetch;
