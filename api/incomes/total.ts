@@ -9,10 +9,10 @@ const app = new Hono();
 const buildPath = (table: string, url: string) => `/api/${table}/${url}`;
 
 // CORS para a rota correta
-app.options(buildPath("income", "total-incomes"), () => handleOptions());
+app.options(buildPath("incomes", "total-incomes"), () => handleOptions());
 
 // GET da rota
-app.get(buildPath("income", "total-incomes"), async (c) => {
+app.get(buildPath("incomes", "total-incomes"), async (c) => {
   try {
     const token = c.req.header("Authorization");
     const supabase = createClientWithAuth(token);
