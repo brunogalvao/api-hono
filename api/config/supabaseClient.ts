@@ -15,13 +15,3 @@ export function getSupabaseClient(c: Context) {
     },
   );
 }
-
-export async function getUserOrThrow(c: Context) {
-  const supabase = getSupabaseClient(c);
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Usuário não autenticado.");
-  return { supabase, user };
-}

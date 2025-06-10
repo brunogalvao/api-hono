@@ -1,100 +1,90 @@
 import { Hono } from "hono";
 import { handleOptions } from "../config/apiHeader";
-import { getUserOrThrow } from "../config/supabaseClient";
+import { getSupabaseClient } from "../config/supabaseClient";
 
 export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-// ✅ Rota OPTIONS necessária para CORS
+// CORS
 app.options("/api/incomes", () => handleOptions());
 
-// ✅ GET - listar rendimento
+// GET - listar rendimentos do usuário
 app.get("/api/incomes", async (c) => {
-  try {
-    const { supabase, user } = await getUserOrThrow(c);
+  const supabase = getSupabaseClient(c);
 
-    const { data, error } = await supabase
-      .from("incomes")
-      .select("*")
-      .eq("user_id", user.id);
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-    if (error) return c.json({ error: error.message }, 500);
-    return c.json(data);
-  } catch (err) {
-    return c.json(
-      { error: err instanceof Error ? err.message : "Erro inesperado" },
-      401,
-    );
+  if (error || !user) {
+    return c.json({ error: "Usuário não autenticado" }, 401);
   }
+
+  const { data, error: fetchError } = await supabase
+    .from("incomes")
+    .select("*")
+    .eq("user_id", user.id);
+
+  if (fetchError) return c.json({ error: fetchError.message }, 500);
+  return c.json(data);
 });
 
-// ✅ POST - cria novo rendimento
+// POST - cria rendimento
 app.post("/api/incomes", async (c) => {
-  const token = c.req.header("Authorization")?.replace("Bearer ", "");
-  if (!token) return c.json({ error: "Token ausente" }, 401);
+  const supabase = getSupabaseClient(c);
+  const body = await c.req.json();
+  const { descricao, valor, mes, ano } = body;
 
-  const { descricao, valor, mes, ano } = await c.req.json();
-  if (!valor || !mes || !ano)
+  if (!valor || !mes || !ano) {
     return c.json({ error: "Campos obrigatórios ausentes" }, 400);
+  }
 
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } },
-  );
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-  const { data: userData, error: userError } =
-    await supabase.auth.getUser(token);
-  if (userError || !userData?.user)
-    return c.json({ error: "Usuário inválido" }, 401);
+  if (error || !user) {
+    return c.json({ error: "Usuário não autenticado" }, 401);
+  }
 
-  const uid = userData.user.id;
-
-  const { data, error } = await supabase
+  const { data, error: insertError } = await supabase
     .from("incomes")
-    .insert([{ user_id: uid, descricao, valor, mes, ano }])
+    .insert([{ user_id: user.id, descricao, valor, mes, ano }])
     .select();
 
-  if (error) return c.json({ error: error.message }, 500);
+  if (insertError) return c.json({ error: insertError.message }, 500);
   return c.json(data?.[0]);
 });
 
-// ✅ PATCH - atualiza rendimento existente
+// PATCH - atualiza rendimento existente
 app.patch("/api/incomes", async (c) => {
-  const token = c.req.header("Authorization")?.replace("Bearer ", "");
-  if (!token) return c.json({ error: "Token ausente" }, 401);
-
+  const supabase = getSupabaseClient(c);
   const { id, descricao, valor, mes, ano } = await c.req.json();
-  if (!id) return c.json({ error: "ID do rendimento ausente" }, 400);
 
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    },
-  );
+  if (!id) {
+    return c.json({ error: "ID do rendimento ausente" }, 400);
+  }
 
-  const { data: userData, error: userError } =
-    await supabase.auth.getUser(token);
-  if (userError || !userData?.user)
-    return c.json({ error: "Usuário inválido" }, 401);
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-  const uid = userData.user.id;
+  if (error || !user) {
+    return c.json({ error: "Usuário não autenticado" }, 401);
+  }
 
-  const { data, error } = await supabase
+  const { data, error: updateError } = await supabase
     .from("incomes")
     .update({ descricao, valor, mes, ano })
     .eq("id", id)
-    .eq("user_id", uid) // garante que só edita o próprio rendimento
+    .eq("user_id", user.id)
     .select();
 
-  if (error) return c.json({ error: error.message }, 500);
+  if (updateError) return c.json({ error: updateError.message }, 500);
   if (!data.length) return c.json({ error: "Rendimento não encontrado" }, 404);
 
   return c.json(data[0]);
