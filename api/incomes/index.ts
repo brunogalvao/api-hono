@@ -8,9 +8,6 @@ const app = new Hono();
 // ✅ Rota OPTIONS necessária para CORS
 app.options("/api/incomes", () => handleOptions());
 
-// ✅ Rota OPTIONS necessária para CORS - Delete
-app.options("/api/incomes/:id", () => handleOptions());
-
 // ✅ GET - listar rendimento
 app.get("/api/incomes", async (c) => {
   console.log("🔍 ROTA incomes ativada");
@@ -112,38 +109,8 @@ app.patch("/api/incomes", async (c) => {
   return c.json(data[0]);
 });
 
-// ✅ DELETE - ROTA: /api/incomes/:id
-app.delete("/api/incomes/:id", async (c) => {
-  const token = c.req.header("Authorization")?.replace("Bearer ", "");
-  if (!token) return c.json({ error: "Token ausente" }, 401);
-
-  const id = c.req.param("id");
-  if (!id) return c.json({ error: "ID do rendimento ausente" }, 400);
-
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    },
-  );
-
-  const { error } = await supabase.from("incomes").delete().eq("id", id);
-
-  if (error) return c.json({ error: error.message }, 500);
-
-  return c.json({ success: true });
-});
-
-// ✅ CORS para rota dinâmica DELETE
-app.options("/api/incomes/:id", () => handleOptions());
-
 export const GET = app.fetch;
 export const POST = app.fetch;
 export const PATCH = app.fetch;
-export const DELETE = app.fetch;
 export const OPTIONS = app.fetch;
 export default app.fetch;
