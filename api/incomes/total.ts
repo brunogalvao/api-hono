@@ -44,3 +44,4 @@ app.get(pathTotalIncomes, async (c) => {
 
 export const GET = app.fetch;
 export const OPTIONS = app.fetch;
+export default app.fetch;
