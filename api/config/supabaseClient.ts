@@ -14,3 +14,18 @@ export function getSupabaseClient(c: Context) {
     },
   );
 }
+
+// Quando você só tem o token manualmente (útil para rotas dinâmicas como /:id)
+export function createClientWithAuth(token: string | null = "") {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      global: {
+        headers: {
+          Authorization: token ?? "",
+        },
+      },
+    },
+  );
+}

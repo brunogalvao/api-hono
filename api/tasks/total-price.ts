@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { handleOptions } from "../config/apiHeader";
-import { createClientWithAuth } from "../config/creatClient";
+import { createClientWithAuth } from "../config/supabaseClient";
 
 export const config = { runtime: "edge" };
 
