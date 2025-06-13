@@ -57,7 +57,9 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 Este projeto está publicado automaticamente via [Vercel](https://vercel.com):
 
-📡 Produção: [https://api-hono-jet.vercel.app/api/incomes](https://api-hono-jet.vercel.app/api/incomes)
+📡 Produção:
+- [https://api-hono-jet.vercel.app/api/incomes](https://api-hono-jet.vercel.app/api/incomes)
+- [https://api-hono-jet.vercel.app/api/tasks](https://api-hono-jet.vercel.app/api/tasks)
 
 ---
 
