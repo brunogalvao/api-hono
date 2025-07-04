@@ -1,46 +1,25 @@
-// api/ia/investment-tip.ts
+import { OpenAI } from "openai";
 
-import { Hono } from "hono";
-import { handle } from "hono/vercel";
-
-const app = new Hono();
-
-app.post("/api/ia/investment-tip", async (c) => {
-  const body = await c.req.json();
-  const { totalIncome, totalPaid } = body;
-
-  const prompt = `
-Você é um assistente financeiro. Com base nos dados abaixo, sugira uma dica de investimento simples e prática para o usuário.
-
-- Rendimento total: R$${totalIncome}
-- Total pago em despesas: R$${totalPaid}
-
-A resposta deve ser breve (1 ou 2 frases) e em linguagem acessível.
-`;
-
-  const openAiResponse = await fetch(
-    "https://api.openai.com/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [
-          { role: "system", content: "Você é um consultor financeiro." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.7,
-      }),
-    },
-  );
-
-  const data = await openAiResponse.json();
-  const suggestion = data.choices?.[0]?.message?.content;
-
-  return c.json({ suggestion });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-export const POST = handle(app);
+export const POST = async (req: Request) => {
+  const { income, expenses } = await req.json();
+
+  const prompt = `
+    Usuário tem rendimento mensal de R$ ${income} e gastos totais de R$ ${expenses}.
+    Sugira uma dica de investimento em até 2 frases considerando esse perfil.
+  `;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.7,
+  });
+
+  return new Response(
+    JSON.stringify({ advice: completion.choices[0].message.content }),
+    { status: 200 },
+  );
+};
