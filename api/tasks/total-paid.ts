@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { handleOptions } from "../config/apiHeader";
 import { createClientWithAuth } from "../config/supabaseClient";
+import { TASK_STATUS } from "../model/tasks.model";
 
 export const config = { runtime: "edge" };
 
@@ -28,7 +29,7 @@ app.get("/api/tasks/total-paid", async (c) => {
       .from("tasks")
       .select("price")
       .eq("user_id", user.id)
-      .eq("done", true);
+      .eq("done", TASK_STATUS.Pago);
 
     if (error) {
       console.error("Erro ao buscar tasks:", error.message);
