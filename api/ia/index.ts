@@ -1,16 +1,16 @@
 import { Hono } from "hono";
 import { OpenAI } from "openai";
-import { handleOptions } from "../config/apiHeader"; // ou ajuste o path se estiver diferente
+import { handleOptions } from "../config/apiHeader";
 
 export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-// CORS (opcional)
-app.options("/api/ia", () => handleOptions());
+// CORS
+app.options("/", () => handleOptions());
 
-// POST route
-app.post("/api/ia", async (c) => {
+// POST: sugestão de investimento
+app.post("/", async (c) => {
   const { income, expenses } = await c.req.json();
 
   if (!income || !expenses) {
@@ -35,6 +35,5 @@ app.post("/api/ia", async (c) => {
   return c.json({ advice: completion.choices[0].message.content });
 });
 
-// Exporte corretamente
 export const POST = app.fetch;
 export const OPTIONS = app.fetch;
