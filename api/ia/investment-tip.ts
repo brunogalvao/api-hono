@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { OpenAI } from "openai";
-import { handleOptions } from "@/api/config/apiHeader";
+import { handleOptions } from "../config/apiHeader";
 
 export const config = { runtime: "edge" };
 
