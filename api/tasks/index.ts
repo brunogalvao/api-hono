@@ -1,10 +1,15 @@
 import { Hono } from "hono";
 import { handleOptions } from "../config/apiHeader";
 import { getSupabaseClient } from "../config/supabaseClient";
+import { errorHandler, requestLogger, validateRequiredParams, validateTypes } from "../config/errorHandler";
 
 export const config = { runtime: "edge" };
 
 const app = new Hono();
+
+// Middlewares globais
+app.use("*", errorHandler);
+app.use("*", requestLogger);
 
 app.options("/api/tasks", () => handleOptions());
 
@@ -23,11 +28,21 @@ app.get("/api/tasks", async (c) => {
   const month = Number(url.searchParams.get("month"));
   const year = Number(url.searchParams.get("year"));
 
-  if (!month || !year) {
-    return c.json(
-      { error: "Parâmetros 'month' e 'year' são obrigatórios." },
-      400,
-    );
+  // Validação melhorada
+  const validationError = validateRequiredParams({ month, year }, ['month', 'year']);
+  if (validationError) {
+    return c.json({ error: validationError }, 400);
+  }
+
+  const typeValidationError = validateTypes(
+    { month, year },
+    {
+      month: (value) => typeof value === 'number' && value >= 1 && value <= 12,
+      year: (value) => typeof value === 'number' && value >= 2000
+    }
+  );
+  if (typeValidationError) {
+    return c.json({ error: typeValidationError }, 400);
   }
 
   const { data, error } = await supabase
