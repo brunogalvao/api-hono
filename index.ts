@@ -24,6 +24,7 @@ export const GET = async () => {
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
         
         .container {
@@ -32,7 +33,7 @@ export const GET = async () => {
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             padding: 40px;
             max-width: 800px;
-            width: 90%;
+            width: 100%;
             text-align: center;
         }
         
@@ -104,20 +105,10 @@ export const GET = async () => {
             color: white;
         }
         
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-        
         .btn-secondary {
             background: #f8f9fa;
             color: #667eea;
             border: 2px solid #667eea;
-        }
-        
-        .btn-secondary:hover {
-            background: #667eea;
-            color: white;
         }
         
         .endpoints {
@@ -176,13 +167,6 @@ export const GET = async () => {
             height: 8px;
             background: #28a745;
             border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
         }
         
         .footer {
