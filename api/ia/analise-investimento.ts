@@ -23,31 +23,46 @@ app.post("/api/ia/analise-investimento", async (c) => {
       return c.json({ error: "Usuário não autenticado" }, 401);
     }
 
-    // Buscar rendimentos do usuário
+    // Buscar rendimentos do usuário (sempre dados mais recentes)
     const { data: incomes, error: incomesError } = await supabase
       .from("incomes")
-      .select("valor, mes, ano")
-      .eq("user_id", user.id);
+      .select("valor, mes, ano, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
 
     if (incomesError) {
       return c.json({ error: "Erro ao buscar rendimentos", details: incomesError.message }, 500);
     }
 
-    // Buscar tarefas do usuário
+    // Buscar tarefas do usuário (sempre dados mais recentes)
     const { data: tasks, error: tasksError } = await supabase
       .from("tasks")
-      .select("price, paid")
-      .eq("user_id", user.id);
+      .select("price, paid, created_at, updated_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
 
     if (tasksError) {
       return c.json({ error: "Erro ao buscar tarefas", details: tasksError.message }, 500);
     }
 
-    // Calcular dados financeiros reais
+    // Calcular dados financeiros reais com logs para debug
     const rendimentoMes = incomes?.reduce((sum, income) => sum + parseFloat(income.valor), 0) || 0;
     const tarefasPagas = tasks?.filter(task => task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
     const tarefasPendentes = tasks?.filter(task => !task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
     const totalTarefas = tarefasPagas + tarefasPendentes;
+
+    // Logs para debug
+    console.log("Dados reais do Supabase:", {
+      userId: user.id,
+      totalIncomes: incomes?.length || 0,
+      totalTasks: tasks?.length || 0,
+      tasksPaid: tasks?.filter(t => t.paid).length || 0,
+      tasksPending: tasks?.filter(t => !t.paid).length || 0,
+      rendimentoMes,
+      tarefasPagas,
+      tarefasPendentes,
+      totalTarefas
+    });
 
     // Calcular dados financeiros
     const rendimentoDisponivel = rendimentoMes - totalTarefas;
@@ -227,17 +242,23 @@ Responda APENAS com o JSON válido, sem texto adicional.
         metadata: {
           timestamp: new Date().toISOString(),
           fonte: "Dados Reais do Supabase",
-          versao: "5.0",
+          versao: "5.1",
           ia: "Google Gemini",
           respostaIA: aiResponse.substring(0, 200) + "...", // Primeiros 200 chars da resposta
           dadosReais: {
             totalRendimentos: incomes?.length || 0,
             totalTarefas: tasks?.length || 0,
             tarefasPagas: tasks?.filter(t => t.paid).length || 0,
-            tarefasPendentes: tasks?.filter(t => !t.paid).length || 0
+            tarefasPendentes: tasks?.filter(t => !t.paid).length || 0,
+            ultimaAtualizacao: new Date().toISOString(),
+            cacheControl: "no-cache"
           }
         }
       }
+    }, 200, {
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0"
     });
 
   } catch (error: any) {
@@ -248,6 +269,69 @@ Responda APENAS com o JSON válido, sem texto adicional.
   }
 });
 
+app.get("/api/ia/analise-investimento", async (c) => {
+  try {
+    const supabase = getSupabaseClient(c);
+    
+    // Buscar dados reais do usuário autenticado
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return c.json({ error: "Usuário não autenticado" }, 401);
+    }
+
+    // Buscar rendimentos do usuário
+    const { data: incomes, error: incomesError } = await supabase
+      .from("incomes")
+      .select("valor, mes, ano, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (incomesError) {
+      return c.json({ error: "Erro ao buscar rendimentos", details: incomesError.message }, 500);
+    }
+
+    // Buscar tarefas do usuário
+    const { data: tasks, error: tasksError } = await supabase
+      .from("tasks")
+      .select("price, paid, created_at, updated_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
+
+    if (tasksError) {
+      return c.json({ error: "Erro ao buscar tarefas", details: tasksError.message }, 500);
+    }
+
+    // Calcular dados financeiros reais
+    const rendimentoMes = incomes?.reduce((sum, income) => sum + parseFloat(income.valor), 0) || 0;
+    const tarefasPagas = tasks?.filter(task => task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
+    const tarefasPendentes = tasks?.filter(task => !task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
+    const totalTarefas = tarefasPagas + tarefasPendentes;
+
+    return c.json({
+      success: true,
+      debug: {
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+        dadosReais: {
+          totalRendimentos: incomes?.length || 0,
+          totalTarefas: tasks?.length || 0,
+          tarefasPagas: tasks?.filter(t => t.paid).length || 0,
+          tarefasPendentes: tasks?.filter(t => !t.paid).length || 0,
+          rendimentoMes,
+          tarefasPagas,
+          tarefasPendentes,
+          totalTarefas
+        },
+        rendimentos: incomes?.slice(0, 5), // Primeiros 5 rendimentos
+        tarefas: tasks?.slice(0, 5) // Primeiras 5 tarefas
+      }
+    });
+  } catch (error: any) {
+    return c.json({ error: "Erro no debug", details: error.message }, 500);
+  }
+});
+
+export const GET = app.fetch;
 export const POST = app.fetch;
 export const OPTIONS = app.fetch;
 export default app.fetch; 
