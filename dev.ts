@@ -297,8 +297,202 @@ app.get("/api/tasks", async (c) => {
       title: "Tarefa de exemplo",
       done: false,
       created_at: new Date().toISOString(),
-    },
+    }
   ]);
+});
+
+// Rota de teste POST
+app.post("/api/test", async (c) => {
+  return c.json({ message: "POST funcionando!" });
+});
+
+// Rota POST para incomes
+app.post("/api/incomes", async (c) => {
+  const body = await c.req.json();
+  const { descricao, valor, mes, ano } = body;
+  
+  if (!valor || !mes || !ano) {
+    return c.json({ error: "Campos obrigatórios ausentes" }, 400);
+  }
+
+  // Simular criação de rendimento
+  const newIncome = {
+    id: Date.now().toString(),
+    descricao: descricao || "Rendimento",
+    valor,
+    mes,
+    ano,
+    user_id: "user123",
+    created_at: new Date().toISOString()
+  };
+
+  return c.json(newIncome);
+});
+
+// Rota PATCH para incomes
+app.patch("/api/incomes", async (c) => {
+  const body = await c.req.json();
+  const { id, descricao, valor, mes, ano } = body;
+  
+  if (!id) {
+    return c.json({ error: "ID do rendimento ausente" }, 400);
+  }
+
+  // Simular atualização de rendimento
+  const updatedIncome = {
+    id,
+    descricao: descricao || "Rendimento atualizado",
+    valor: valor || "1000.00",
+    mes: mes || "Janeiro",
+    ano: ano || 2025,
+    user_id: "user123",
+    updated_at: new Date().toISOString()
+  };
+
+  return c.json(updatedIncome);
+});
+
+// Rota GET para incomes (mock)
+app.get("/api/incomes", async (c) => {
+  return c.json([
+    {
+      id: "1",
+      descricao: "Salário Principal",
+      valor: "3822.00",
+      mes: "Janeiro",
+      ano: 2025,
+      user_id: "user123"
+    },
+    {
+      id: "2", 
+      descricao: "Freelance",
+      valor: "2333.00",
+      mes: "Abril",
+      ano: 2025,
+      user_id: "user123"
+    },
+    {
+      id: "3",
+      descricao: "Bônus",
+      valor: "2332.00", 
+      mes: "Julho",
+      ano: 2025,
+      user_id: "user123"
+    }
+  ]);
+});
+
+// Rota para total por mês
+app.get("/api/incomes/total-por-mes", async (c) => {
+  // Dados de exemplo baseados na interface
+  const mockData = [
+    { mes: "Janeiro", ano: 2025, valor: "3822.00" },
+    { mes: "Abril", ano: 2025, valor: "2333.00" },
+    { mes: "Julho", ano: 2025, valor: "2332.00" },
+  ];
+
+  // Define o tipo para o objeto de agrupamento
+  type MonthlyTotal = {
+    mes: string;
+    ano: number;
+    total: number;
+    quantidade: number;
+  };
+
+  // Agrupa por mês e ano, somando os valores
+  const totalsByMonth: Record<string, MonthlyTotal> = mockData.reduce((acc, income) => {
+    const key = `${income.mes}_${income.ano}`;
+    if (!acc[key]) {
+      acc[key] = {
+        mes: income.mes,
+        ano: income.ano,
+        total: 0,
+        quantidade: 0
+      };
+    }
+    acc[key].total += parseFloat(income.valor);
+    acc[key].quantidade += 1;
+    return acc;
+  }, {} as Record<string, MonthlyTotal>);
+
+  // Converte para array e ordena por ano e mês
+  const result = Object.values(totalsByMonth).sort((a: MonthlyTotal, b: MonthlyTotal) => {
+    if (a.ano !== b.ano) return a.ano - b.ano;
+    return a.mes.localeCompare(b.mes);
+  });
+
+  return c.json(result);
+});
+
+// Rota de IA para análise de investimentos
+app.post("/api/ia", async (c) => {
+  try {
+    // Simular dados de rendimentos
+    const mockIncomes = [
+      { mes: "Janeiro", ano: 2025, valor: "3822.00" },
+      { mes: "Abril", ano: 2025, valor: "2333.00" },
+      { mes: "Julho", ano: 2025, valor: "2332.00" },
+    ];
+
+    // Calcular totais
+    const totalAnual = mockIncomes.reduce((sum, income) => sum + parseFloat(income.valor), 0);
+    const mediaMensal = totalAnual / 12;
+
+    // Obter cotação do dólar
+    const dolarResponse = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
+    const dolarData = await dolarResponse.json();
+    const cotacaoDolar = parseFloat(dolarData.USDBRL.bid);
+
+    // Simular análise da IA
+    const analysisResult = {
+      analise: {
+        estabilidade: "Renda variável com 3 fontes diferentes",
+        tendencia: "Crescimento moderado",
+        risco: "Médio - diversificação adequada"
+      },
+      recomendacoes: {
+        dolar: {
+          percentual: 25,
+          justificativa: "Proteção cambial e diversificação",
+          risco: "Médio"
+        },
+        poupanca: {
+          percentual: 35,
+          justificativa: "Reserva de emergência e segurança",
+          risco: "Baixo"
+        },
+        outros: {
+          sugestoes: ["CDB", "Fundos de investimento", "Tesouro Direto"],
+          justificativa: "Diversificação e crescimento"
+        }
+      },
+      estrategia: {
+        curtoPrazo: "Manter 6 meses de despesas em poupança",
+        medioPrazo: "Diversificar em CDB e fundos",
+        longoPrazo: "Investir em dólar para proteção cambial"
+      },
+      cotacaoDolar: cotacaoDolar,
+      resumo: "Perfil conservador com boa diversificação. Recomenda-se 35% poupança, 25% dólar e 40% outros investimentos."
+    };
+
+    return c.json({
+      success: true,
+      data: analysisResult,
+      metadata: {
+        totalRendimentos: mockIncomes.length,
+        totalAnual,
+        mediaMensal,
+        cotacaoDolar,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error: any) {
+    return c.json({ 
+      error: "Erro na análise de investimentos",
+      details: error.message 
+    }, 500);
+  }
 });
 
 // Rota para documentação

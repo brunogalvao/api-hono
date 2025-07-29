@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@google/generative-ai':
+        specifier: ^0.24.1
+        version: 0.24.1
       '@hono/node-server':
         specifier: ^1.14.1
         version: 1.14.1(hono@4.7.9)
@@ -212,6 +215,10 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@google/generative-ai@0.24.1':
+    resolution: {integrity: sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q==}
+    engines: {node: '>=18.0.0'}
 
   '@hono/arktype-validator@2.0.1':
     resolution: {integrity: sha512-Z4PQFtzgbGneBap+TTViRIBAoUWbwEwg8PaKNqALAP6z9N2ksJI81PfcsSQNUzwtrn8LipkMvBb8/D9Pei2GJw==}
@@ -576,6 +583,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.25.4':
     optional: true
+
+  '@google/generative-ai@0.24.1': {}
 
   '@hono/arktype-validator@2.0.1(arktype@2.0.0-rc.25)(hono@4.7.9)':
     dependencies:
