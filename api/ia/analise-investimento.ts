@@ -15,26 +15,39 @@ app.options("/api/ia/analise-investimento", () => handleOptions());
 
 app.post("/api/ia/analise-investimento", async (c) => {
   try {
-    // Receber dados do dashboard do frontend
-    const dashboardData = await c.req.json();
+    const supabase = getSupabaseClient(c);
     
-    // Validar dados obrigatórios
-    if (!dashboardData.rendimentoMes || !dashboardData.totalTarefas) {
-      return c.json({ 
-        error: "Dados obrigatórios ausentes", 
-        required: ["rendimentoMes", "totalTarefas"],
-        received: Object.keys(dashboardData)
-      }, 400);
+    // Buscar dados reais do usuário autenticado
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return c.json({ error: "Usuário não autenticado" }, 401);
     }
 
-    // Dados do dashboard (agora vindos do frontend)
-    const {
-      rendimentoMes = 0,
-      tarefasPagas = 0,
-      tarefasPendentes = 0,
-      totalTarefas = 0,
-      cotacaoDolar = 5.57
-    } = dashboardData;
+    // Buscar rendimentos do usuário
+    const { data: incomes, error: incomesError } = await supabase
+      .from("incomes")
+      .select("valor, mes, ano")
+      .eq("user_id", user.id);
+
+    if (incomesError) {
+      return c.json({ error: "Erro ao buscar rendimentos", details: incomesError.message }, 500);
+    }
+
+    // Buscar tarefas do usuário
+    const { data: tasks, error: tasksError } = await supabase
+      .from("tasks")
+      .select("price, paid")
+      .eq("user_id", user.id);
+
+    if (tasksError) {
+      return c.json({ error: "Erro ao buscar tarefas", details: tasksError.message }, 500);
+    }
+
+    // Calcular dados financeiros reais
+    const rendimentoMes = incomes?.reduce((sum, income) => sum + parseFloat(income.valor), 0) || 0;
+    const tarefasPagas = tasks?.filter(task => task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
+    const tarefasPendentes = tasks?.filter(task => !task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
+    const totalTarefas = tarefasPagas + tarefasPendentes;
 
     // Calcular dados financeiros
     const rendimentoDisponivel = rendimentoMes - totalTarefas;
@@ -58,9 +71,9 @@ app.post("/api/ia/analise-investimento", async (c) => {
     const precisaEconomizar = percentualGasto > 100;
     const economiaRecomendada = percentualGasto > 100 ? (totalTarefas - rendimentoMes) : 0;
 
-    // Construir prompt para Gemini com dados dinâmicos
+    // Construir prompt para Gemini com dados reais do banco
     const prompt = `
-ANÁLISE FINANCEIRA DINÂMICA:
+ANÁLISE FINANCEIRA REAL - DADOS DO BANCO:
 
 RENDIMENTOS:
 - Salário mensal: ${formatToBRL(rendimentoMes)}
@@ -213,10 +226,16 @@ Responda APENAS com o JSON válido, sem texto adicional.
         analise: analysisResult,
         metadata: {
           timestamp: new Date().toISOString(),
-          fonte: "Dashboard Financeiro",
-          versao: "4.0",
+          fonte: "Dados Reais do Supabase",
+          versao: "5.0",
           ia: "Google Gemini",
-          respostaIA: aiResponse.substring(0, 200) + "..." // Primeiros 200 chars da resposta
+          respostaIA: aiResponse.substring(0, 200) + "...", // Primeiros 200 chars da resposta
+          dadosReais: {
+            totalRendimentos: incomes?.length || 0,
+            totalTarefas: tasks?.length || 0,
+            tarefasPagas: tasks?.filter(t => t.paid).length || 0,
+            tarefasPendentes: tasks?.filter(t => !t.paid).length || 0
+          }
         }
       }
     });

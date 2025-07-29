@@ -394,12 +394,13 @@ Response:
                 <span class="endpoint">/api/ia/analise-investimento</span>
                 <span class="status active">ATIVO</span>
                 <div class="description">
-                    Análise financeira inteligente com Google Gemini AI.
+                    Análise financeira inteligente com Google Gemini AI usando dados reais do Supabase.
                 </div>
                 <div class="features">
                     <h4>Funcionalidades:</h4>
                     <ul>
-                        <li>Análise de rendimentos vs despesas</li>
+                        <li>Busca automática de dados do usuário autenticado</li>
+                        <li>Análise em tempo real baseada nos dados reais</li>
                         <li>Cálculo automático de investimento (30% do salário)</li>
                         <li>Conversão BRL ↔ USD em tempo real</li>
                         <li>Recomendações personalizadas de economia</li>
@@ -407,17 +408,12 @@ Response:
                         <li>Distribuição de investimentos (dólar, poupança, outros)</li>
                         <li>Dicas de economia personalizadas</li>
                         <li>Status da situação financeira (bom/regular/crítico)</li>
+                        <li>Atualização automática quando dados mudam</li>
                     </ul>
                 </div>
                 <div class="example">
 POST /api/ia/analise-investimento
-{
-  "rendimentoMes": 2332.00,
-  "tarefasPagas": 123.00,
-  "tarefasPendentes": 200.00,
-  "totalTarefas": 323.00,
-  "cotacaoDolar": 5.57
-}
+(Requires Authentication Header)
 
 Response:
 {
@@ -437,6 +433,15 @@ Response:
       "estrategiaInvestimento": {...},
       "dicasEconomia": [...],
       "resumo": "..."
+    }
+  },
+  "metadata": {
+    "fonte": "Dados Reais do Supabase",
+    "dadosReais": {
+      "totalRendimentos": 3,
+      "totalTarefas": 15,
+      "tarefasPagas": 8,
+      "tarefasPendentes": 7
     }
   }
 }
