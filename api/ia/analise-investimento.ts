@@ -15,18 +15,30 @@ app.options("/api/ia/analise-investimento", () => handleOptions());
 
 app.post("/api/ia/analise-investimento", async (c) => {
   try {
-    // Dados reais do dashboard do usuário
-    const dashboardData = {
-      rendimentoMes: 2332.00,        // R$ 2.332,00 do dashboard
-      tarefasPagas: 123.00,          // R$ 123,00 do dashboard  
-      tarefasPendentes: 12422.00,    // R$ 12.422,00 do dashboard (corrigido)
-      totalTarefas: 12545.00,        // R$ 12.545,00 do dashboard (corrigido)
-      cotacaoDolar: 5.57             // R$ 5,57 do dashboard
-    };
+    // Receber dados do dashboard do frontend
+    const dashboardData = await c.req.json();
+    
+    // Validar dados obrigatórios
+    if (!dashboardData.rendimentoMes || !dashboardData.totalTarefas) {
+      return c.json({ 
+        error: "Dados obrigatórios ausentes", 
+        required: ["rendimentoMes", "totalTarefas"],
+        received: Object.keys(dashboardData)
+      }, 400);
+    }
+
+    // Dados do dashboard (agora vindos do frontend)
+    const {
+      rendimentoMes = 0,
+      tarefasPagas = 0,
+      tarefasPendentes = 0,
+      totalTarefas = 0,
+      cotacaoDolar = 5.57
+    } = dashboardData;
 
     // Calcular dados financeiros
-    const rendimentoDisponivel = dashboardData.rendimentoMes - dashboardData.totalTarefas;
-    const percentualGasto = (dashboardData.totalTarefas / dashboardData.rendimentoMes) * 100;
+    const rendimentoDisponivel = rendimentoMes - totalTarefas;
+    const percentualGasto = rendimentoMes > 0 ? (totalTarefas / rendimentoMes) * 100 : 0;
     const percentualDisponivel = 100 - percentualGasto;
 
     // Obter cotação real do dólar
@@ -35,33 +47,33 @@ app.post("/api/ia/analise-investimento", async (c) => {
     const cotacaoDolarReal = parseFloat(dolarData.USDBRL.bid);
 
     // Calcular investimento recomendado (30% do salário)
-    const investimentoRecomendado = dashboardData.rendimentoMes * 0.30;
+    const investimentoRecomendado = rendimentoMes * 0.30;
     const investimentoDisponivel = Math.max(0, rendimentoDisponivel * 0.30);
 
     // Conversões para dólar
     const investimentoUSD = convertBRLtoUSD(investimentoRecomendado, cotacaoDolarReal);
     const investimentoDisponivelUSD = convertBRLtoUSD(investimentoDisponivel, cotacaoDolarReal);
 
-    // Análise de economia - situação crítica com 538% de gastos
-    const precisaEconomizar = percentualGasto > 100; // Sempre true neste caso
-    const economiaRecomendada = percentualGasto > 100 ? (dashboardData.totalTarefas - dashboardData.rendimentoMes) : 0;
+    // Análise de economia - situação crítica se gastos > 100%
+    const precisaEconomizar = percentualGasto > 100;
+    const economiaRecomendada = percentualGasto > 100 ? (totalTarefas - rendimentoMes) : 0;
 
-    // Construir prompt para Gemini com dados reais
+    // Construir prompt para Gemini com dados dinâmicos
     const prompt = `
-ANÁLISE FINANCEIRA CRÍTICA - ATENÇÃO ESPECIAL:
+ANÁLISE FINANCEIRA DINÂMICA:
 
 RENDIMENTOS:
-- Salário mensal: ${formatToBRL(dashboardData.rendimentoMes)}
-- Rendimento disponível: ${formatToBRL(rendimentoDisponivel)} (NEGATIVO!)
-- Percentual gasto: ${percentualGasto.toFixed(1)}% (CRÍTICO - 538%!)
-- Percentual disponível: ${percentualDisponivel.toFixed(1)}% (NEGATIVO!)
+- Salário mensal: ${formatToBRL(rendimentoMes)}
+- Rendimento disponível: ${formatToBRL(rendimentoDisponivel)} ${rendimentoDisponivel < 0 ? '(NEGATIVO!)' : ''}
+- Percentual gasto: ${percentualGasto.toFixed(1)}% ${percentualGasto > 100 ? '(CRÍTICO!)' : ''}
+- Percentual disponível: ${percentualDisponivel.toFixed(1)}% ${percentualDisponivel < 0 ? '(NEGATIVO!)' : ''}
 
 DESPESAS:
-- Tarefas pagas: ${formatToBRL(dashboardData.tarefasPagas)}
-- Tarefas pendentes: ${formatToBRL(dashboardData.tarefasPendentes)}
-- Total de despesas: ${formatToBRL(dashboardData.totalTarefas)}
+- Tarefas pagas: ${formatToBRL(tarefasPagas)}
+- Tarefas pendentes: ${formatToBRL(tarefasPendentes)}
+- Total de despesas: ${formatToBRL(totalTarefas)}
 
-SITUAÇÃO CRÍTICA:
+SITUAÇÃO:
 - Déficit mensal: ${formatToBRL(Math.abs(rendimentoDisponivel))}
 - Despesas são ${percentualGasto.toFixed(1)}% do rendimento
 - Necessário economizar: ${formatToBRL(economiaRecomendada)}
@@ -72,21 +84,21 @@ INVESTIMENTO:
 - Cotação do dólar: ${formatToBRL(cotacaoDolarReal)}
 
 ANÁLISE NECESSÁRIA:
-1. Precisa economizar? SIM (CRÍTICO)
+1. Precisa economizar? ${precisaEconomizar ? 'SIM' : 'NÃO'} ${percentualGasto > 100 ? '(CRÍTICO)' : ''}
 2. Economia recomendada: ${formatToBRL(economiaRecomendada)}
-3. Estratégia de emergência financeira
-4. Dicas URGENTES de economia
+3. Estratégia baseada na situação atual
+4. Dicas de economia apropriadas
 5. Priorização de pagamentos
-6. Redução imediata de despesas
+6. Redução de despesas se necessário
 
-Forneça uma análise de EMERGÊNCIA em JSON com:
-- statusEconomia (critico)
-- precisaEconomizar (true)
+Forneça uma análise personalizada em JSON com:
+- statusEconomia (bom/regular/critico)
+- precisaEconomizar (boolean)
 - economiaRecomendada (number)
-- estrategiaInvestimento (object com foco em emergência)
-- dicasEconomia (array com ações imediatas)
-- distribuicaoInvestimento (object - foco em reserva de emergência)
-- resumo (string enfatizando urgência)
+- estrategiaInvestimento (object)
+- dicasEconomia (array)
+- distribuicaoInvestimento (object)
+- resumo (string)
 
 Responda APENAS com o JSON válido, sem texto adicional.
 `;
@@ -108,32 +120,62 @@ Responda APENAS com o JSON válido, sem texto adicional.
         throw new Error("JSON não encontrado na resposta");
       }
     } catch (error) {
-      // Fallback se a IA não retornar JSON válido - SITUAÇÃO CRÍTICA
-      const statusEconomia = "critico"; // Sempre crítico com 538% de gastos
+      // Fallback se a IA não retornar JSON válido - ANÁLISE DINÂMICA
+      const statusEconomia = percentualGasto > 100 ? "critico" : percentualGasto > 70 ? "regular" : "bom";
       
       analysisResult = {
         statusEconomia,
-        precisaEconomizar: true, // Sempre true com déficit
+        precisaEconomizar: percentualGasto > 70,
         economiaRecomendada,
         estrategiaInvestimento: {
-          curtoPrazo: "🚨 EMERGÊNCIA: Reduzir despesas imediatamente",
-          medioPrazo: "📊 Reestruturar orçamento completamente",
-          longoPrazo: "💰 Focar em aumentar renda e reduzir dívidas"
+          curtoPrazo: percentualGasto > 100 
+            ? "🚨 EMERGÊNCIA: Reduzir despesas imediatamente"
+            : percentualGasto > 70
+            ? "⚠️ ATENÇÃO: Reduzir despesas urgentemente"
+            : "✅ Manter reserva de emergência de 6 meses",
+          medioPrazo: percentualGasto > 70
+            ? "📊 Reestruturar orçamento completamente"
+            : "💰 Diversificar em CDB e fundos conservadores",
+          longoPrazo: percentualGasto > 70
+            ? "💰 Focar em aumentar renda e reduzir dívidas"
+            : "🚀 Investir em dólar para proteção cambial"
         },
-        dicasEconomia: [
+        dicasEconomia: percentualGasto > 100 ? [
           "🚨 URGENTE: Reduzir despesas em pelo menos 80%",
           "📋 Priorizar pagamento das dívidas mais caras",
           "💰 Negociar parcelamento das despesas pendentes",
           "📊 Revisar TODAS as despesas mensais",
           "🎯 Estabelecer metas de economia de 90%",
           "⚠️ Não fazer novos gastos até equilibrar"
+        ] : percentualGasto > 70 ? [
+          "⚠️ Reduzir despesas urgentemente",
+          "📊 Revisar todas as despesas mensais",
+          "🎯 Estabelecer metas de economia de 20%",
+          "💰 Identificar despesas desnecessárias"
+        ] : [
+          "✅ Excelente controle financeiro!",
+          "💡 Continue mantendo as despesas baixas",
+          "🚀 Aproveite para aumentar os investimentos",
+          "📈 Considere diversificar mais os investimentos"
         ],
-        distribuicaoInvestimento: {
+        distribuicaoInvestimento: percentualGasto > 100 ? {
           poupanca: 0, // Foco em reserva de emergência
           dolar: 0,    // Não investir até equilibrar
           outros: 0    // Foco total em economia
+        } : percentualGasto > 70 ? {
+          poupanca: 60, // Foco em segurança
+          dolar: 20,    // Proteção cambial
+          outros: 20    // Diversificação
+        } : {
+          poupanca: 30, // Reserva de emergência
+          dolar: 35,    // Proteção cambial
+          outros: 35    // Diversificação
         },
-        resumo: `🚨 SITUAÇÃO CRÍTICA: Você está gastando ${percentualGasto.toFixed(1)}% da renda (déficit de ${formatToBRL(Math.abs(rendimentoDisponivel))}). Ação imediata necessária.`
+        resumo: percentualGasto > 100 
+          ? `🚨 SITUAÇÃO CRÍTICA: Você está gastando ${percentualGasto.toFixed(1)}% da renda (déficit de ${formatToBRL(Math.abs(rendimentoDisponivel))}). Ação imediata necessária.`
+          : percentualGasto > 70
+          ? `⚠️ SITUAÇÃO REGULAR: Você está gastando ${percentualGasto.toFixed(1)}% da renda. Foque em reduzir despesas.`
+          : `✅ EXCELENTE CONTROLE: Você está gastando apenas ${percentualGasto.toFixed(1)}% da renda. Pode investir ${formatToBRL(investimentoRecomendado)}.`
       };
     }
 
@@ -141,18 +183,18 @@ Responda APENAS com o JSON válido, sem texto adicional.
       success: true,
       data: {
         dashboard: {
-          rendimentoMes: dashboardData.rendimentoMes,
-          rendimentoMesBRL: formatToBRL(dashboardData.rendimentoMes),
+          rendimentoMes: rendimentoMes,
+          rendimentoMesBRL: formatToBRL(rendimentoMes),
           rendimentoDisponivel: rendimentoDisponivel,
           rendimentoDisponivelBRL: formatToBRL(rendimentoDisponivel),
           percentualGasto: percentualGasto,
           percentualDisponivel: percentualDisponivel,
-          tarefasPagas: dashboardData.tarefasPagas,
-          tarefasPagasBRL: formatToBRL(dashboardData.tarefasPagas),
-          tarefasPendentes: dashboardData.tarefasPendentes,
-          tarefasPendentesBRL: formatToBRL(dashboardData.tarefasPendentes),
-          totalTarefas: dashboardData.totalTarefas,
-          totalTarefasBRL: formatToBRL(dashboardData.totalTarefas)
+          tarefasPagas: tarefasPagas,
+          tarefasPagasBRL: formatToBRL(tarefasPagas),
+          tarefasPendentes: tarefasPendentes,
+          tarefasPendentesBRL: formatToBRL(tarefasPendentes),
+          totalTarefas: totalTarefas,
+          totalTarefasBRL: formatToBRL(totalTarefas)
         },
         investimento: {
           recomendado: investimentoRecomendado,

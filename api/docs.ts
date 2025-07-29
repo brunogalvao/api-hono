@@ -411,6 +411,14 @@ Response:
                 </div>
                 <div class="example">
 POST /api/ia/analise-investimento
+{
+  "rendimentoMes": 2332.00,
+  "tarefasPagas": 123.00,
+  "tarefasPendentes": 200.00,
+  "totalTarefas": 323.00,
+  "cotacaoDolar": 5.57
+}
+
 Response:
 {
   "success": true,
