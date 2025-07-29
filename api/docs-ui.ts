@@ -1,13 +1,17 @@
+import { Hono } from "hono";
+
 export const config = { runtime: "edge" };
 
-export const GET = async () => {
+const app = new Hono();
+
+app.get("/api/docs", (c) => {
   const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Hono - Documentação Completa</title>
+    <title>API Financeira - Documentação</title>
     <style>
         * {
             margin: 0;
@@ -16,10 +20,11 @@ export const GET = async () => {
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
         
         .container {
@@ -29,540 +34,454 @@ export const GET = async () => {
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px 20px;
             text-align: center;
-            border-radius: 10px;
-            margin-bottom: 30px;
+            color: white;
+            margin-bottom: 40px;
         }
         
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         
         .header p {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             opacity: 0.9;
         }
         
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+        .api-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
             margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
         }
         
-        .info-card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .api-section:hover {
+            transform: translateY(-5px);
         }
         
-        .info-card h3 {
+        .section-title {
             color: #667eea;
-            margin-bottom: 10px;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
         }
         
-        .endpoints {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .endpoint {
-            border-bottom: 1px solid #eee;
+        .route {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
             padding: 20px;
-        }
-        
-        .endpoint:last-child {
-            border-bottom: none;
-        }
-        
-        .endpoint-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
         }
         
         .method {
-            padding: 4px 12px;
-            border-radius: 4px;
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
             font-weight: bold;
             font-size: 0.9rem;
-            margin-right: 15px;
+            margin-right: 10px;
         }
         
-        .method.get { background: #10b981; color: white; }
-        .method.post { background: #3b82f6; color: white; }
-        .method.patch { background: #f59e0b; color: white; }
-        .method.delete { background: #ef4444; color: white; }
-        .method.options { background: #8b5cf6; color: white; }
+        .get { background: #28a745; color: white; }
+        .post { background: #007bff; color: white; }
+        .patch { background: #ffc107; color: #333; }
+        .options { background: #6c757d; color: white; }
         
-        .path {
-            font-family: 'Monaco', 'Menlo', monospace;
+        .endpoint {
+            font-family: 'Courier New', monospace;
             font-size: 1.1rem;
-            color: #374151;
+            font-weight: bold;
+            color: #333;
         }
         
         .description {
-            color: #6b7280;
-            margin-bottom: 15px;
+            margin: 15px 0;
+            color: #666;
+            line-height: 1.8;
         }
         
-        .parameters, .responses {
-            margin-top: 15px;
+        .features {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
         }
         
-        .parameters h4, .responses h4 {
-            color: #374151;
+        .features h4 {
+            color: #1976d2;
             margin-bottom: 10px;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
         
-        .parameter, .response {
-            background: #f9fafb;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.9rem;
+        .features ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .features li {
+            padding: 5px 0;
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .features li:before {
+            content: "✅";
+            position: absolute;
+            left: 0;
         }
         
         .example {
-            background: #1f2937;
-            color: #f9fafb;
+            background: #f5f5f5;
             padding: 15px;
-            border-radius: 4px;
-            margin-top: 10px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
             overflow-x: auto;
         }
         
-        .status-200 { color: #10b981; }
-        .status-400 { color: #f59e0b; }
-        .status-401 { color: #ef4444; }
-        .status-404 { color: #ef4444; }
-        .status-500 { color: #ef4444; }
-        
-        .section-title {
-            background: #667eea;
-            color: white;
-            padding: 15px 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-        
-        .feature-badge {
+        .status {
             display: inline-block;
-            padding: 2px 8px;
+            padding: 3px 8px;
             border-radius: 12px;
-            font-size: 0.7rem;
+            font-size: 0.8rem;
             font-weight: bold;
             margin-left: 10px;
         }
         
-        .feature-new { background: #10b981; color: white; }
-        .feature-ai { background: #8b5cf6; color: white; }
-        .feature-auth { background: #f59e0b; color: white; }
+        .active { background: #d4edda; color: #155724; }
+        .deprecated { background: #f8d7da; color: #721c24; }
         
         .footer {
             text-align: center;
+            color: white;
             margin-top: 40px;
             padding: 20px;
-            color: #6b7280;
+            opacity: 0.8;
         }
         
-        @media (max-width: 768px) {
-            .container { padding: 10px; }
-            .header h1 { font-size: 2rem; }
-            .endpoint-header { flex-direction: column; align-items: flex-start; }
-            .method { margin-bottom: 10px; }
+        .tech-stack {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .tech-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+        
+        .tech-item h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .tech-item p {
+            font-size: 0.9rem;
+            color: #666;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 Finance API Hono</h1>
-            <p>Documentação completa da API para gerenciamento de tarefas, rendimentos e análise inteligente</p>
+            <h1>💰 API Financeira</h1>
+            <p>Documentação completa das rotas e funcionalidades</p>
         </div>
-        
-        <div class="info-grid">
-            <div class="info-card">
-                <h3>🔐 Autenticação</h3>
-                <p>Bearer Token no header Authorization</p>
+
+        <div class="tech-stack">
+            <h2 class="section-title">🛠️ Stack Tecnológico</h2>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <h4>Hono</h4>
+                    <p>Framework web para APIs</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Supabase</h4>
+                    <p>Banco de dados e autenticação</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Vercel</h4>
+                    <p>Deploy e hospedagem</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Google Gemini</h4>
+                    <p>IA para análise financeira</p>
+                </div>
+                <div class="tech-item">
+                    <h4>TypeScript</h4>
+                    <p>Tipagem estática</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Edge Runtime</h4>
+                    <p>Execução serverless</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2 class="section-title">🔐 Autenticação</h2>
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/user</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Retorna informações do usuário autenticado via Supabase.
+                </div>
+                <div class="features">
+                    <h4>Funcionalidades:</h4>
+                    <ul>
+                        <li>Validação de token JWT</li>
+                        <li>Retorno de dados do usuário</li>
+                        <li>Tratamento de erros de autenticação</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2 class="section-title">💰 Gestão de Rendimentos</h2>
+            
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/incomes</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Lista todos os rendimentos do usuário autenticado.
+                </div>
+                <div class="features">
+                    <h4>Funcionalidades:</h4>
+                    <ul>
+                        <li>Filtragem por usuário</li>
+                        <li>Ordenação por data</li>
+                        <li>Validação de autenticação</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="route">
+                <span class="method post">POST</span>
+                <span class="endpoint">/api/incomes</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Cria um novo registro de rendimento.
+                </div>
+                <div class="features">
+                    <h4>Funcionalidades:</h4>
+                    <ul>
+                        <li>Validação de campos obrigatórios</li>
+                        <li>Associação automática ao usuário</li>
+                        <li>Formatação de valores monetários</li>
+                    </ul>
+                </div>
                 <div class="example">
-Authorization: Bearer seu-token-aqui
+POST /api/incomes
+{
+  "descricao": "Salário",
+  "valor": "2500.00",
+  "mes": "janeiro",
+  "ano": 2024
+}
                 </div>
             </div>
-            
-            <div class="info-card">
-                <h3>🌐 CORS</h3>
-                <p>Habilitado para todos os domínios</p>
+
+            <div class="route">
+                <span class="method patch">PATCH</span>
+                <span class="endpoint">/api/incomes</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Atualiza um registro de rendimento existente.
+                </div>
+                <div class="features">
+                    <h4>Funcionalidades:</h4>
+                    <ul>
+                        <li>Validação de ID</li>
+                        <li>Verificação de propriedade</li>
+                        <li>Atualização parcial</li>
+                    </ul>
+                </div>
             </div>
-            
-            <div class="info-card">
-                <h3>⚡ Runtime</h3>
-                <p>Edge Runtime (Vercel)</p>
-            </div>
-            
-            <div class="info-card">
-                <h3>📡 Base URL</h3>
-                <p>https://api-hono-fx59wgb2e-bruno-galvos-projects.vercel.app</p>
+
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/incomes/total-por-mes</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Retorna o total de rendimentos agrupados por mês e ano.
+                </div>
+                <div class="features">
+                    <h4>Funcionalidades:</h4>
+                    <ul>
+                        <li>Agrupamento por mês/ano</li>
+                        <li>Cálculo automático de totais</li>
+                        <li>Ordenação cronológica</li>
+                        <li>Contagem de registros por período</li>
+                    </ul>
+                </div>
+                <div class="example">
+GET /api/incomes/total-por-mes
+Response:
+[
+  {
+    "mes": "janeiro",
+    "ano": 2024,
+    "total": 2500.00,
+    "quantidade": 1
+  }
+]
+                </div>
             </div>
         </div>
-        
-        <div class="endpoints">
-            <div class="section-title">🔍 Endpoints de Status</div>
+
+        <div class="api-section">
+            <h2 class="section-title">📋 Gestão de Tarefas</h2>
             
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/ping</span>
-                </div>
-                <div class="description">Endpoint de teste básico para verificar conectividade</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Resposta de sucesso</div>
-                    <div class="example">"pong 🏓"</div>
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/tasks</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Lista todas as tarefas do usuário autenticado.
                 </div>
             </div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/health</span>
-                </div>
-                <div class="description">Status de saúde da API e serviços conectados</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - API saudável</div>
-                    <div class="response status-500">503 - API com problemas</div>
-                    <div class="example">
-{
-  "status": "healthy",
-  "timestamp": "2025-07-29T14:12:01.643Z",
-  "services": {
-    "supabase": {
-      "status": "connected",
-      "error": null
-    }
-  }
-}
-                    </div>
+
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/tasks/total</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Retorna o valor total de todas as tarefas.
                 </div>
             </div>
-            
-            <div class="section-title">💰 Gestão de Rendimentos</div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/incomes</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                </div>
-                <div class="description">Listar todos os rendimentos do usuário autenticado</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Lista de rendimentos</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                    <div class="example">
-[
-  {
-    "id": "1",
-    "descricao": "Salário Principal",
-    "valor": "3822.00",
-    "mes": "Janeiro",
-    "ano": 2025,
-    "user_id": "user123"
-  }
-]
-                    </div>
+
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/tasks/total-paid</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Retorna o valor total das tarefas pagas.
                 </div>
             </div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method post">POST</span>
-                    <span class="path">/api/incomes</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                </div>
-                <div class="description">Criar novo rendimento</div>
-                <div class="parameters">
-                    <h4>Parâmetros (JSON)</h4>
-                    <div class="parameter">descricao (string, obrigatório) - Descrição do rendimento</div>
-                    <div class="parameter">valor (string, obrigatório) - Valor do rendimento</div>
-                    <div class="parameter">mes (string, obrigatório) - Mês do rendimento</div>
-                    <div class="parameter">ano (number, obrigatório) - Ano do rendimento</div>
-                </div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Rendimento criado</div>
-                    <div class="response status-400">400 - Dados inválidos</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
+
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/tasks/total-price</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Retorna o valor total das tarefas pendentes.
                 </div>
             </div>
+        </div>
+
+        <div class="api-section">
+            <h2 class="section-title">🤖 Inteligência Artificial</h2>
             
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method patch">PATCH</span>
-                    <span class="path">/api/incomes</span>
-                    <span class="feature-badge feature-auth">Auth</span>
+            <div class="route">
+                <span class="method post">POST</span>
+                <span class="endpoint">/api/ia/analise-investimento</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Análise financeira inteligente com Google Gemini AI.
                 </div>
-                <div class="description">Atualizar rendimento existente</div>
-                <div class="parameters">
-                    <h4>Parâmetros (JSON)</h4>
-                    <div class="parameter">id (string, obrigatório) - ID do rendimento</div>
-                    <div class="parameter">descricao (string, opcional) - Nova descrição</div>
-                    <div class="parameter">valor (string, opcional) - Novo valor</div>
-                    <div class="parameter">mes (string, opcional) - Novo mês</div>
-                    <div class="parameter">ano (number, opcional) - Novo ano</div>
+                <div class="features">
+                    <h4>Funcionalidades:</h4>
+                    <ul>
+                        <li>Análise de rendimentos vs despesas</li>
+                        <li>Cálculo automático de investimento (30% do salário)</li>
+                        <li>Conversão BRL ↔ USD em tempo real</li>
+                        <li>Recomendações personalizadas de economia</li>
+                        <li>Estratégia de investimento baseada no perfil</li>
+                        <li>Distribuição de investimentos (dólar, poupança, outros)</li>
+                        <li>Dicas de economia personalizadas</li>
+                        <li>Status da situação financeira (bom/regular/crítico)</li>
+                    </ul>
                 </div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Rendimento atualizado</div>
-                    <div class="response status-400">400 - Dados inválidos</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                    <div class="response status-404">404 - Rendimento não encontrado</div>
-                </div>
-            </div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/incomes/total-por-mes</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                    <span class="feature-badge feature-new">NOVO</span>
-                </div>
-                <div class="description">Obter total de rendimentos agrupados por mês e ano</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Totais por mês</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                    <div class="example">
-[
-  {
-    "mes": "Janeiro",
-    "ano": 2025,
-    "total": 3822,
-    "quantidade": 1
-  },
-  {
-    "mes": "Abril",
-    "ano": 2025,
-    "total": 2333,
-    "quantidade": 1
-  }
-]
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section-title">🤖 Análise Inteligente</div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method post">POST</span>
-                    <span class="path">/api/ia</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                    <span class="feature-badge feature-ai">IA</span>
-                    <span class="feature-badge feature-new">NOVO</span>
-                </div>
-                <div class="description">Análise inteligente de rendimentos com recomendações de investimento usando OpenAI</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Análise completa</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                    <div class="response status-500">500 - Erro na análise</div>
-                    <div class="example">
+                <div class="example">
+POST /api/ia/analise-investimento
+Response:
 {
   "success": true,
   "data": {
+    "dashboard": {
+      "rendimentoMes": 2332.00,
+      "rendimentoDisponivel": 2009.00,
+      "percentualGasto": 13.9
+    },
+    "investimento": {
+      "recomendado": 699.60,
+      "recomendadoUSD": "$125.73"
+    },
     "analise": {
-      "estabilidade": "Renda variável com 3 fontes diferentes",
-      "tendencia": "Crescimento moderado",
-      "risco": "Médio - diversificação adequada"
-    },
-    "recomendacoes": {
-      "dolar": {
-        "percentual": 25,
-        "justificativa": "Proteção cambial e diversificação",
-        "risco": "Médio"
-      },
-      "poupanca": {
-        "percentual": 35,
-        "justificativa": "Reserva de emergência e segurança",
-        "risco": "Baixo"
-      },
-      "outros": {
-        "sugestoes": ["CDB", "Fundos de investimento", "Tesouro Direto"],
-        "justificativa": "Diversificação e crescimento"
-      }
-    },
-    "estrategia": {
-      "curtoPrazo": "Manter 6 meses de despesas em poupança",
-      "medioPrazo": "Diversificar em CDB e fundos",
-      "longoPrazo": "Investir em dólar para proteção cambial"
-    },
-    "cotacaoDolar": 5.5823,
-    "resumo": "Perfil conservador com boa diversificação"
-  },
-  "metadata": {
-    "totalRendimentos": 3,
-    "totalAnual": 8487,
-    "mediaMensal": 707.25,
-    "cotacaoDolar": 5.5823,
-    "timestamp": "2025-07-29T14:09:20.499Z"
+      "statusEconomia": "bom",
+      "estrategiaInvestimento": {...},
+      "dicasEconomia": [...],
+      "resumo": "..."
+    }
   }
 }
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section-title">📋 Gestão de Tarefas</div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/tasks</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                </div>
-                <div class="description">Listar tarefas do usuário</div>
-                <div class="parameters">
-                    <h4>Parâmetros</h4>
-                    <div class="parameter">month (number, obrigatório) - Mês (1-12)</div>
-                    <div class="parameter">year (number, obrigatório) - Ano (>= 2000)</div>
-                </div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Lista de tarefas</div>
-                    <div class="response status-400">400 - Parâmetros inválidos</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                </div>
-            </div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method post">POST</span>
-                    <span class="path">/api/tasks</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                </div>
-                <div class="description">Criar nova tarefa</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Tarefa criada</div>
-                    <div class="response status-400">400 - Dados inválidos</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                </div>
-            </div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/tasks/total</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                </div>
-                <div class="description">Contar total de tarefas do usuário</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Total de tarefas</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                </div>
-            </div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/tasks/total-paid</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                </div>
-                <div class="description">Contar total de tarefas pagas do usuário</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Total de tarefas pagas</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                </div>
-            </div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/tasks/total-price</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                </div>
-                <div class="description">Calcular valor total das tarefas do usuário</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Valor total das tarefas</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                </div>
-            </div>
-            
-            <div class="section-title">👤 Gestão de Usuários</div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/user</span>
-                    <span class="feature-badge feature-auth">Auth</span>
-                </div>
-                <div class="description">Obter dados do usuário logado</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Dados do usuário</div>
-                    <div class="response status-401">401 - Usuário não autenticado</div>
-                </div>
-            </div>
-            
-            <div class="section-title">🔧 Endpoints de Sistema</div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/test</span>
-                </div>
-                <div class="description">Endpoint de teste simples</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Resposta de sucesso</div>
-                    <div class="example">"ok"</div>
-                </div>
-            </div>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method get">GET</span>
-                    <span class="path">/api/supabase-test</span>
-                </div>
-                <div class="description">Testar conexão com Supabase</div>
-                <div class="responses">
-                    <h4>Respostas</h4>
-                    <div class="response status-200">200 - Conexão OK</div>
-                    <div class="response status-500">500 - Erro de conexão</div>
                 </div>
             </div>
         </div>
-        
+
+        <div class="api-section">
+            <h2 class="section-title">🔧 Utilitários</h2>
+            
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/ping</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Endpoint de teste para verificar se a API está funcionando.
+                </div>
+            </div>
+
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/health</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Verificação de saúde da API e conectividade com Supabase.
+                </div>
+            </div>
+
+            <div class="route">
+                <span class="method get">GET</span>
+                <span class="endpoint">/api/supabase-test</span>
+                <span class="status active">ATIVO</span>
+                <div class="description">
+                    Teste específico de conectividade com Supabase.
+                </div>
+            </div>
+        </div>
+
         <div class="footer">
-            <p>📚 Para mais detalhes, acesse: <a href="/api/doc" style="color: #667eea;">/api/doc</a></p>
-            <p>🔧 Desenvolvido com Hono + Supabase + OpenAI + Vercel</p>
-            <p>🚀 <strong>Novidades:</strong> Análise de IA, Total por Mês, Cotação do Dólar</p>
+            <p>🚀 API desenvolvida com Hono, Supabase e Google Gemini</p>
+            <p>📚 Versão 4.0 - Análise Financeira Inteligente</p>
         </div>
     </div>
 </body>
 </html>
   `;
 
-  return new Response(html, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-cache"
-    }
-  });
-}; 
+  return c.html(html);
+});
+
+export const GET = app.fetch;
+export default app.fetch; 
