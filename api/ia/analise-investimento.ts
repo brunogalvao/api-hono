@@ -1,17 +1,28 @@
 import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
-import { getSupabaseClient } from "../config/supabaseClient";
-import { formatToBRL, formatToUSD, convertBRLtoUSD } from "../utils/format";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getSupabaseClient } from "../config/supabaseClient";
+// Função para formatar valores em BRL
+const formatToBRL = (value: number | string) => {
+  const number = typeof value === 'string' ? Number(value) : value;
+  if (isNaN(number)) return 'Valor inválido';
+  return new Intl.NumberFormat('pt-BR', { 
+    style: 'currency', 
+    currency: 'BRL' 
+  }).format(number);
+};
 
 export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-// Inicializar Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
-app.options("/api/ia/analise-investimento", () => handleOptions());
+// Função para converter BRL para USD
+const convertBRLtoUSD = (brlValue: number, dolarRate: number) => {
+  const usdValue = brlValue / dolarRate;
+  return {
+    brl: formatToBRL(brlValue),
+    usd: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usdValue)
+  };
+};
 
 app.post("/api/ia/analise-investimento", async (c) => {
   // Declarar variáveis no escopo da função
@@ -102,50 +113,46 @@ app.post("/api/ia/analise-investimento", async (c) => {
 
     // Construir prompt para Gemini com dados reais do banco
     const prompt = `
-ANÁLISE FINANCEIRA REAL - DADOS DO BANCO:
+🚨 ANÁLISE FINANCEIRA CRÍTICA - DADOS REAIS DO BANCO:
 
-RENDIMENTOS:
-- Salário mensal: ${formatToBRL(rendimentoMes)}
-- Rendimento disponível: ${formatToBRL(rendimentoDisponivel)} ${rendimentoDisponivel < 0 ? '(NEGATIVO!)' : ''}
-- Percentual gasto: ${percentualGasto.toFixed(1)}% ${percentualGasto > 100 ? '(CRÍTICO!)' : ''}
-- Percentual disponível: ${percentualDisponivel.toFixed(1)}% ${percentualDisponivel < 0 ? '(NEGATIVO!)' : ''}
+SITUAÇÃO ATUAL:
+- Renda mensal: ${formatToBRL(rendimentoMes)}
+- Despesas totais: ${formatToBRL(totalTarefas)}
+- Déficit mensal: ${formatToBRL(Math.abs(rendimentoDisponivel))}
+- Percentual gasto: ${percentualGasto.toFixed(1)}% ${percentualGasto > 100 ? '🚨 CRÍTICO - GASTANDO MAIS QUE GANHA!' : ''}
 
-DESPESAS:
+DETALHAMENTO:
 - Tarefas pagas: ${formatToBRL(tarefasPagas)}
 - Tarefas pendentes: ${formatToBRL(tarefasPendentes)}
-- Total de despesas: ${formatToBRL(totalTarefas)}
+- Rendimento disponível: ${formatToBRL(rendimentoDisponivel)} ${rendimentoDisponivel < 0 ? '🚨 NEGATIVO!' : ''}
 
-SITUAÇÃO:
-- Déficit mensal: ${formatToBRL(Math.abs(rendimentoDisponivel))}
-- Despesas são ${percentualGasto.toFixed(1)}% do rendimento
-- Necessário economizar: ${formatToBRL(economiaRecomendada)}
-
-INVESTIMENTO:
-- Valor recomendado: ${formatToBRL(investimentoRecomendado)} (${investimentoUSD.usd})
-- Valor disponível para investir: ${formatToBRL(investimentoDisponivel)} (${investimentoDisponivelUSD.usd})
-- Cotação do dólar: ${formatToBRL(cotacaoDolarReal)}
+SITUAÇÃO CRÍTICA:
+${percentualGasto > 100 ? '🚨 EMERGÊNCIA: Você está gastando ' + percentualGasto.toFixed(1) + '% da renda!' : ''}
+${rendimentoDisponivel < 0 ? '🚨 DÉFICIT: Você precisa de ' + formatToBRL(Math.abs(rendimentoDisponivel)) + ' a mais por mês!' : ''}
 
 ANÁLISE NECESSÁRIA:
-1. Precisa economizar? ${precisaEconomizar ? 'SIM' : 'NÃO'} ${percentualGasto > 100 ? '(CRÍTICO)' : ''}
-2. Economia recomendada: ${formatToBRL(economiaRecomendada)}
-3. Estratégia baseada na situação atual
-4. Dicas de economia apropriadas
-5. Priorização de pagamentos
-6. Redução de despesas se necessário
+1. Status da economia: ${percentualGasto > 100 ? 'CRÍTICO' : percentualGasto > 70 ? 'REGULAR' : 'BOM'}
+2. Precisa economizar: ${precisaEconomizar ? 'SIM - URGENTE!' : 'NÃO'}
+3. Economia recomendada: ${formatToBRL(economiaRecomendada)}
+4. Estratégia de emergência se necessário
+5. Priorização de pagamentos críticos
+6. Redução imediata de despesas
 
 Forneça uma análise personalizada em JSON com:
 - statusEconomia (bom/regular/critico)
 - precisaEconomizar (boolean)
 - economiaRecomendada (number)
-- estrategiaInvestimento (object)
-- dicasEconomia (array)
-- distribuicaoInvestimento (object)
+- estrategiaInvestimento (object com curtoPrazo, medioPrazo, longoPrazo)
+- dicasEconomia (array de strings)
+- distribuicaoInvestimento (object com poupanca, dolar, outros)
 - resumo (string)
 
+IMPORTANTE: Se percentualGasto > 100%, a situação é CRÍTICA e precisa de ação imediata!
 Responda APENAS com o JSON válido, sem texto adicional.
 `;
 
     // Chamar Gemini
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -201,17 +208,17 @@ Responda APENAS com o JSON válido, sem texto adicional.
           "📈 Considere diversificar mais os investimentos"
         ],
         distribuicaoInvestimento: percentualGasto > 100 ? {
-          poupanca: 0, // Foco em reserva de emergência
-          dolar: 0,    // Não investir até equilibrar
-          outros: 0    // Foco total em economia
+          poupanca: 0,
+          dolar: 0,
+          outros: 0
         } : percentualGasto > 70 ? {
-          poupanca: 60, // Foco em segurança
-          dolar: 20,    // Proteção cambial
-          outros: 20    // Diversificação
+          poupanca: 60,
+          dolar: 20,
+          outros: 20
         } : {
-          poupanca: 30, // Reserva de emergência
-          dolar: 35,    // Proteção cambial
-          outros: 35    // Diversificação
+          poupanca: 30,
+          dolar: 35,
+          outros: 35
         },
         resumo: percentualGasto > 100 
           ? `🚨 SITUAÇÃO CRÍTICA: Você está gastando ${percentualGasto.toFixed(1)}% da renda (déficit de ${formatToBRL(Math.abs(rendimentoDisponivel))}). Ação imediata necessária.`
@@ -256,14 +263,14 @@ Responda APENAS com o JSON válido, sem texto adicional.
         metadata: {
           timestamp: new Date().toISOString(),
           fonte: "Dados Reais do Supabase",
-          versao: "5.1",
+          versao: "5.2",
           ia: "Google Gemini",
-          respostaIA: aiResponse.substring(0, 200) + "...", // Primeiros 200 chars da resposta
+          respostaIA: aiResponse.substring(0, 200) + "...",
           dadosReais: {
             totalRendimentos: incomes?.length || 0,
             totalTarefas: tasks?.length || 0,
-            tarefasPagas: tasks?.filter(t => t.paid).length || 0,
-            tarefasPendentes: tasks?.filter(t => !t.paid).length || 0,
+            tarefasPagasCount: tasks?.filter(t => t.paid).length || 0,
+            tarefasPendentesCount: tasks?.filter(t => !t.paid).length || 0,
             ultimaAtualizacao: new Date().toISOString(),
             cacheControl: "no-cache"
           }
@@ -329,15 +336,14 @@ app.get("/api/ia/analise-investimento", async (c) => {
         dadosReais: {
           totalRendimentos: incomes?.length || 0,
           totalTarefas: tasks?.length || 0,
-          tarefasPagas: tasks?.filter(t => t.paid).length || 0,
-          tarefasPendentes: tasks?.filter(t => !t.paid).length || 0,
+          tarefasPagasCount: tasks?.filter(t => t.paid).length || 0,
+          tarefasPendentesCount: tasks?.filter(t => !t.paid).length || 0,
           rendimentoMes,
           tarefasPagas,
           tarefasPendentes,
-          totalTarefas
         },
-        rendimentos: incomes?.slice(0, 5), // Primeiros 5 rendimentos
-        tarefas: tasks?.slice(0, 5) // Primeiras 5 tarefas
+        rendimentos: incomes?.slice(0, 5),
+        tarefas: tasks?.slice(0, 5)
       }
     });
   } catch (error: any) {
