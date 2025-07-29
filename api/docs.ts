@@ -421,27 +421,65 @@ Response:
   "data": {
     "dashboard": {
       "rendimentoMes": 2332.00,
-      "rendimentoDisponivel": 2009.00,
-      "percentualGasto": 13.9
+      "rendimentoMesBRL": "R$ 2.332,00",
+      "rendimentoDisponivel": -7468.00,
+      "rendimentoDisponivelBRL": "R$ -7.468,00",
+      "percentualGasto": 420.2,
+      "tarefasPagas": 123.00,
+      "tarefasPagasBRL": "R$ 123,00",
+      "tarefasPendentes": 9677.00,
+      "tarefasPendentesBRL": "R$ 9.677,00",
+      "totalTarefas": 9800.00,
+      "totalTarefasBRL": "R$ 9.800,00"
     },
     "investimento": {
       "recomendado": 699.60,
-      "recomendadoUSD": "$125.73"
+      "recomendadoBRL": "R$ 699,60",
+      "recomendadoUSD": {"brl": "R$ 699,60", "usd": "$133.26"},
+      "disponivel": 0,
+      "disponivelBRL": "R$ 0,00",
+      "disponivelUSD": {"brl": "R$ 0,00", "usd": "$0.00"},
+      "percentualSalario": 30
+    },
+    "cotacaoDolar": {
+      "valor": 5.25,
+      "valorBRL": "R$ 5,25",
+      "timestamp": "2024-01-15T14:30:00.000Z"
     },
     "analise": {
-      "statusEconomia": "bom",
-      "estrategiaInvestimento": {...},
-      "dicasEconomia": [...],
-      "resumo": "..."
+      "statusEconomia": "critico",
+      "precisaEconomizar": true,
+      "economiaRecomendada": 7468.00,
+      "estrategiaInvestimento": {
+        "curtoPrazo": "🚨 EMERGÊNCIA: Reduzir despesas imediatamente",
+        "medioPrazo": "📊 Reestruturar orçamento completamente",
+        "longoPrazo": "💰 Focar em aumentar renda e reduzir dívidas"
+      },
+      "dicasEconomia": [
+        "🚨 URGENTE: Reduzir despesas em pelo menos 80%",
+        "📋 Priorizar pagamento das dívidas mais caras",
+        "💰 Negociar parcelamento das despesas pendentes"
+      ],
+      "distribuicaoInvestimento": {
+        "poupanca": 0,
+        "dolar": 0,
+        "outros": 0
+      },
+      "resumo": "🚨 SITUAÇÃO CRÍTICA: Você está gastando 420.2% da renda. Ação imediata necessária."
     }
   },
   "metadata": {
+    "timestamp": "2024-01-15T14:30:00.000Z",
     "fonte": "Dados Reais do Supabase",
+    "versao": "5.2",
+    "ia": "Google Gemini",
     "dadosReais": {
-      "totalRendimentos": 3,
-      "totalTarefas": 15,
-      "tarefasPagas": 8,
-      "tarefasPendentes": 7
+      "totalRendimentos": 5,
+      "totalTarefas": 12,
+      "tarefasPagasCount": 3,
+      "tarefasPendentesCount": 9,
+      "ultimaAtualizacao": "2024-01-15T14:30:00.000Z",
+      "cacheControl": "no-cache"
     }
   }
 }

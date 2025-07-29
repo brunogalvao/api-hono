@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getSupabaseClient } from "../config/supabaseClient";
+
+export const config = { runtime: "edge" };
+
+const app = new Hono();
+
 // Função para formatar valores em BRL
 const formatToBRL = (value: number | string) => {
   const number = typeof value === 'string' ? Number(value) : value;
@@ -10,10 +14,6 @@ const formatToBRL = (value: number | string) => {
     currency: 'BRL' 
   }).format(number);
 };
-
-export const config = { runtime: "edge" };
-
-const app = new Hono();
 
 // Função para converter BRL para USD
 const convertBRLtoUSD = (brlValue: number, dolarRate: number) => {
@@ -25,95 +25,39 @@ const convertBRLtoUSD = (brlValue: number, dolarRate: number) => {
 };
 
 app.post("/api/ia/analise-investimento", async (c) => {
-  // Declarar variáveis no escopo da função
-  let rendimentoMes = 0;
-  let tarefasPagas = 0;
-  let tarefasPendentes = 0;
-  let totalTarefas = 0;
-  let rendimentoDisponivel = 0;
-  let percentualGasto = 0;
-  let percentualDisponivel = 0;
-  let investimentoRecomendado = 0;
-  let investimentoDisponivel = 0;
-  let cotacaoDolarReal = 0;
-  let economiaRecomendada = 0;
-  let precisaEconomizar = false;
-
   try {
-    const supabase = getSupabaseClient(c);
+    // Receber dados do frontend
+    const { rendimentoMes, tarefasPagas, tarefasPendentes, cotacaoDolar } = await c.req.json();
     
-    // Buscar dados reais do usuário autenticado
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return c.json({ error: "Usuário não autenticado" }, 401);
+    // Validar dados obrigatórios
+    if (!rendimentoMes || !tarefasPagas || !tarefasPendentes || !cotacaoDolar) {
+      return c.json({ 
+        error: "Dados obrigatórios ausentes", 
+        required: ["rendimentoMes", "tarefasPagas", "tarefasPendentes", "cotacaoDolar"] 
+      }, 400);
     }
-
-    // Buscar rendimentos do usuário (sempre dados mais recentes)
-    const { data: incomes, error: incomesError } = await supabase
-      .from("incomes")
-      .select("valor, mes, ano, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (incomesError) {
-      return c.json({ error: "Erro ao buscar rendimentos", details: incomesError.message }, 500);
-    }
-
-    // Buscar tarefas do usuário (sempre dados mais recentes)
-    const { data: tasks, error: tasksError } = await supabase
-      .from("tasks")
-      .select("price, paid, created_at, updated_at")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false });
-
-    if (tasksError) {
-      return c.json({ error: "Erro ao buscar tarefas", details: tasksError.message }, 500);
-    }
-
-    // Calcular dados financeiros reais com logs para debug
-    rendimentoMes = incomes?.reduce((sum, income) => sum + parseFloat(income.valor), 0) || 0;
-    tarefasPagas = tasks?.filter(task => task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
-    tarefasPendentes = tasks?.filter(task => !task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
-    totalTarefas = tarefasPagas + tarefasPendentes;
-
-    // Logs para debug
-    console.log("Dados reais do Supabase:", {
-      userId: user.id,
-      totalIncomes: incomes?.length || 0,
-      totalTasks: tasks?.length || 0,
-      tasksPaid: tasks?.filter(t => t.paid).length || 0,
-      tasksPending: tasks?.filter(t => !t.paid).length || 0,
-      rendimentoMes,
-      tarefasPagas,
-      tarefasPendentes,
-      totalTarefas
-    });
 
     // Calcular dados financeiros
-    rendimentoDisponivel = rendimentoMes - totalTarefas;
-    percentualGasto = rendimentoMes > 0 ? (totalTarefas / rendimentoMes) * 100 : 0;
-    percentualDisponivel = 100 - percentualGasto;
-
-    // Obter cotação real do dólar
-    const dolarResponse = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
-    const dolarData = await dolarResponse.json();
-    cotacaoDolarReal = parseFloat(dolarData.USDBRL.bid);
+    const totalTarefas = tarefasPagas + tarefasPendentes;
+    const rendimentoDisponivel = rendimentoMes - totalTarefas;
+    const percentualGasto = rendimentoMes > 0 ? (totalTarefas / rendimentoMes) * 100 : 0;
+    const percentualDisponivel = 100 - percentualGasto;
 
     // Calcular investimento recomendado (30% do salário)
-    investimentoRecomendado = rendimentoMes * 0.30;
-    investimentoDisponivel = Math.max(0, rendimentoDisponivel * 0.30);
+    const investimentoRecomendado = rendimentoMes * 0.30;
+    const investimentoDisponivel = Math.max(0, rendimentoDisponivel * 0.30);
 
     // Conversões para dólar
-    const investimentoUSD = convertBRLtoUSD(investimentoRecomendado, cotacaoDolarReal);
-    const investimentoDisponivelUSD = convertBRLtoUSD(investimentoDisponivel, cotacaoDolarReal);
+    const investimentoUSD = convertBRLtoUSD(investimentoRecomendado, cotacaoDolar);
+    const investimentoDisponivelUSD = convertBRLtoUSD(investimentoDisponivel, cotacaoDolar);
 
     // Análise de economia - situação crítica se gastos > 100%
-    precisaEconomizar = percentualGasto > 100;
-    economiaRecomendada = percentualGasto > 100 ? (totalTarefas - rendimentoMes) : 0;
+    const precisaEconomizar = percentualGasto > 100;
+    const economiaRecomendada = percentualGasto > 100 ? (totalTarefas - rendimentoMes) : 0;
 
-    // Construir prompt para Gemini com dados reais do banco
+    // Construir prompt para Gemini com dados do frontend
     const prompt = `
-🚨 ANÁLISE FINANCEIRA CRÍTICA - DADOS REAIS DO BANCO:
+🚨 ANÁLISE FINANCEIRA CRÍTICA - DADOS DO FRONTEND:
 
 SITUAÇÃO ATUAL:
 - Renda mensal: ${formatToBRL(rendimentoMes)}
@@ -255,24 +199,23 @@ Responda APENAS com o JSON válido, sem texto adicional.
           percentualSalario: 30
         },
         cotacaoDolar: {
-          valor: cotacaoDolarReal,
-          valorBRL: formatToBRL(cotacaoDolarReal),
-          timestamp: dolarData.USDBRL.create_date
+          valor: cotacaoDolar,
+          valorBRL: formatToBRL(cotacaoDolar),
+          timestamp: new Date().toISOString()
         },
         analise: analysisResult,
         metadata: {
           timestamp: new Date().toISOString(),
-          fonte: "Dados Reais do Supabase",
-          versao: "5.2",
+          fonte: "Dados do Frontend",
+          versao: "6.0",
           ia: "Google Gemini",
           respostaIA: aiResponse.substring(0, 200) + "...",
-          dadosReais: {
-            totalRendimentos: incomes?.length || 0,
-            totalTarefas: tasks?.length || 0,
-            tarefasPagasCount: tasks?.filter(t => t.paid).length || 0,
-            tarefasPendentesCount: tasks?.filter(t => !t.paid).length || 0,
-            ultimaAtualizacao: new Date().toISOString(),
-            cacheControl: "no-cache"
+          dadosRecebidos: {
+            rendimentoMes,
+            tarefasPagas,
+            tarefasPendentes,
+            cotacaoDolar,
+            ultimaAtualizacao: new Date().toISOString()
           }
         }
       }
@@ -290,68 +233,6 @@ Responda APENAS com o JSON válido, sem texto adicional.
   }
 });
 
-app.get("/api/ia/analise-investimento", async (c) => {
-  try {
-    const supabase = getSupabaseClient(c);
-    
-    // Buscar dados reais do usuário autenticado
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return c.json({ error: "Usuário não autenticado" }, 401);
-    }
-
-    // Buscar rendimentos do usuário
-    const { data: incomes, error: incomesError } = await supabase
-      .from("incomes")
-      .select("valor, mes, ano, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (incomesError) {
-      return c.json({ error: "Erro ao buscar rendimentos", details: incomesError.message }, 500);
-    }
-
-    // Buscar tarefas do usuário
-    const { data: tasks, error: tasksError } = await supabase
-      .from("tasks")
-      .select("price, paid, created_at, updated_at")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false });
-
-    if (tasksError) {
-      return c.json({ error: "Erro ao buscar tarefas", details: tasksError.message }, 500);
-    }
-
-    // Calcular dados financeiros reais
-    const rendimentoMes = incomes?.reduce((sum, income) => sum + parseFloat(income.valor), 0) || 0;
-    const tarefasPagas = tasks?.filter(task => task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
-    const tarefasPendentes = tasks?.filter(task => !task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
-    const totalTarefas = tarefasPagas + tarefasPendentes;
-
-    return c.json({
-      success: true,
-      debug: {
-        userId: user.id,
-        timestamp: new Date().toISOString(),
-        dadosReais: {
-          totalRendimentos: incomes?.length || 0,
-          totalTarefas: tasks?.length || 0,
-          tarefasPagasCount: tasks?.filter(t => t.paid).length || 0,
-          tarefasPendentesCount: tasks?.filter(t => !t.paid).length || 0,
-          rendimentoMes,
-          tarefasPagas,
-          tarefasPendentes,
-        },
-        rendimentos: incomes?.slice(0, 5),
-        tarefas: tasks?.slice(0, 5)
-      }
-    });
-  } catch (error: any) {
-    return c.json({ error: "Erro no debug", details: error.message }, 500);
-  }
-});
-
-export const GET = app.fetch;
 export const POST = app.fetch;
 export const OPTIONS = app.fetch;
 export default app.fetch; 

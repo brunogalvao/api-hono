@@ -203,7 +203,7 @@ Responda em JSON com a seguinte estrutura:
       };
     }
 
-    return c.json({
+  return c.json({
       success: true,
       data: analysisResult,
       metadata: {

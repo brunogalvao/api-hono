@@ -205,7 +205,7 @@ app.get("/api/docs", (c) => {
             <h1>💰 API Financeira</h1>
             <p>Documentação completa das rotas e funcionalidades</p>
         </div>
-
+        
         <div class="tech-stack">
             <h2 class="section-title">🛠️ Stack Tecnológico</h2>
             <div class="tech-grid">
@@ -234,8 +234,8 @@ app.get("/api/docs", (c) => {
                     <p>Execução serverless</p>
                 </div>
             </div>
-        </div>
-
+            </div>
+            
         <div class="api-section">
             <h2 class="section-title">🔐 Autenticação</h2>
             <div class="route">
@@ -252,15 +252,15 @@ app.get("/api/docs", (c) => {
                         <li>Retorno de dados do usuário</li>
                         <li>Tratamento de erros de autenticação</li>
                     </ul>
-                </div>
+            </div>
             </div>
         </div>
-
+        
         <div class="api-section">
             <h2 class="section-title">💰 Gestão de Rendimentos</h2>
             
             <div class="route">
-                <span class="method get">GET</span>
+                    <span class="method get">GET</span>
                 <span class="endpoint">/api/incomes</span>
                 <span class="status active">ATIVO</span>
                 <div class="description">
@@ -275,7 +275,7 @@ app.get("/api/docs", (c) => {
                     </ul>
                 </div>
             </div>
-
+            
             <div class="route">
                 <span class="method post">POST</span>
                 <span class="endpoint">/api/incomes</span>
@@ -301,7 +301,7 @@ POST /api/incomes
 }
                 </div>
             </div>
-
+            
             <div class="route">
                 <span class="method patch">PATCH</span>
                 <span class="endpoint">/api/incomes</span>
@@ -318,9 +318,9 @@ POST /api/incomes
                     </ul>
                 </div>
             </div>
-
+            
             <div class="route">
-                <span class="method get">GET</span>
+                    <span class="method get">GET</span>
                 <span class="endpoint">/api/incomes/total-por-mes</span>
                 <span class="status active">ATIVO</span>
                 <div class="description">
@@ -349,7 +349,7 @@ Response:
                 </div>
             </div>
         </div>
-
+            
         <div class="api-section">
             <h2 class="section-title">📋 Gestão de Tarefas</h2>
             
@@ -370,9 +370,9 @@ Response:
                     Retorna o valor total de todas as tarefas.
                 </div>
             </div>
-
+            
             <div class="route">
-                <span class="method get">GET</span>
+                    <span class="method get">GET</span>
                 <span class="endpoint">/api/tasks/total-paid</span>
                 <span class="status active">ATIVO</span>
                 <div class="description">
@@ -389,7 +389,7 @@ Response:
                 </div>
             </div>
         </div>
-
+            
         <div class="api-section">
             <h2 class="section-title">🤖 Inteligência Artificial</h2>
             
@@ -439,7 +439,7 @@ Response:
                 </div>
             </div>
         </div>
-
+            
         <div class="api-section">
             <h2 class="section-title">🔧 Utilitários</h2>
             
@@ -460,9 +460,9 @@ Response:
                     Verificação de saúde da API e conectividade com Supabase.
                 </div>
             </div>
-
+            
             <div class="route">
-                <span class="method get">GET</span>
+                    <span class="method get">GET</span>
                 <span class="endpoint">/api/supabase-test</span>
                 <span class="status active">ATIVO</span>
                 <div class="description">
@@ -470,7 +470,7 @@ Response:
                 </div>
             </div>
         </div>
-
+        
         <div class="footer">
             <p>🚀 API desenvolvida com Hono, Supabase e Google Gemini</p>
             <p>📚 Versão 4.0 - Análise Financeira Inteligente</p>
