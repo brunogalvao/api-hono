@@ -14,6 +14,20 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 app.options("/api/ia/analise-investimento", () => handleOptions());
 
 app.post("/api/ia/analise-investimento", async (c) => {
+  // Declarar variáveis no escopo da função
+  let rendimentoMes = 0;
+  let tarefasPagas = 0;
+  let tarefasPendentes = 0;
+  let totalTarefas = 0;
+  let rendimentoDisponivel = 0;
+  let percentualGasto = 0;
+  let percentualDisponivel = 0;
+  let investimentoRecomendado = 0;
+  let investimentoDisponivel = 0;
+  let cotacaoDolarReal = 0;
+  let economiaRecomendada = 0;
+  let precisaEconomizar = false;
+
   try {
     const supabase = getSupabaseClient(c);
     
@@ -46,10 +60,10 @@ app.post("/api/ia/analise-investimento", async (c) => {
     }
 
     // Calcular dados financeiros reais com logs para debug
-    const rendimentoMes = incomes?.reduce((sum, income) => sum + parseFloat(income.valor), 0) || 0;
-    const tarefasPagas = tasks?.filter(task => task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
-    const tarefasPendentes = tasks?.filter(task => !task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
-    const totalTarefas = tarefasPagas + tarefasPendentes;
+    rendimentoMes = incomes?.reduce((sum, income) => sum + parseFloat(income.valor), 0) || 0;
+    tarefasPagas = tasks?.filter(task => task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
+    tarefasPendentes = tasks?.filter(task => !task.paid).reduce((sum, task) => sum + parseFloat(task.price), 0) || 0;
+    totalTarefas = tarefasPagas + tarefasPendentes;
 
     // Logs para debug
     console.log("Dados reais do Supabase:", {
@@ -65,26 +79,26 @@ app.post("/api/ia/analise-investimento", async (c) => {
     });
 
     // Calcular dados financeiros
-    const rendimentoDisponivel = rendimentoMes - totalTarefas;
-    const percentualGasto = rendimentoMes > 0 ? (totalTarefas / rendimentoMes) * 100 : 0;
-    const percentualDisponivel = 100 - percentualGasto;
+    rendimentoDisponivel = rendimentoMes - totalTarefas;
+    percentualGasto = rendimentoMes > 0 ? (totalTarefas / rendimentoMes) * 100 : 0;
+    percentualDisponivel = 100 - percentualGasto;
 
     // Obter cotação real do dólar
     const dolarResponse = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
     const dolarData = await dolarResponse.json();
-    const cotacaoDolarReal = parseFloat(dolarData.USDBRL.bid);
+    cotacaoDolarReal = parseFloat(dolarData.USDBRL.bid);
 
     // Calcular investimento recomendado (30% do salário)
-    const investimentoRecomendado = rendimentoMes * 0.30;
-    const investimentoDisponivel = Math.max(0, rendimentoDisponivel * 0.30);
+    investimentoRecomendado = rendimentoMes * 0.30;
+    investimentoDisponivel = Math.max(0, rendimentoDisponivel * 0.30);
 
     // Conversões para dólar
     const investimentoUSD = convertBRLtoUSD(investimentoRecomendado, cotacaoDolarReal);
     const investimentoDisponivelUSD = convertBRLtoUSD(investimentoDisponivel, cotacaoDolarReal);
 
     // Análise de economia - situação crítica se gastos > 100%
-    const precisaEconomizar = percentualGasto > 100;
-    const economiaRecomendada = percentualGasto > 100 ? (totalTarefas - rendimentoMes) : 0;
+    precisaEconomizar = percentualGasto > 100;
+    economiaRecomendada = percentualGasto > 100 ? (totalTarefas - rendimentoMes) : 0;
 
     // Construir prompt para Gemini com dados reais do banco
     const prompt = `
