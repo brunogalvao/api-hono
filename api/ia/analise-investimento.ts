@@ -389,11 +389,21 @@ app.post("/api/ia/analise-investimento", async (c) => {
             return c.json({ error: "Erro ao buscar dados de tarefas" }, 500);
         }
 
-        // Calcular rendimento total
-        const rendimentoMes =
-            incomes?.reduce((total, income) => {
-                return total + parseFloat(income.valor || "0");
-            }, 0) || 0;
+        // Filtrar rendimentos do mês/ano específico
+        const rendimentosDoMes =
+            incomes?.filter((income) => {
+                if (income.mes && income.ano) {
+                    return (
+                        income.mes === targetMonth && income.ano === targetYear
+                    );
+                }
+                return true; // Se não tem mês/ano, considera todos
+            }) || [];
+
+        // Calcular rendimento do mês específico
+        const rendimentoMes = rendimentosDoMes.reduce((total, income) => {
+            return total + parseFloat(income.valor || "0");
+        }, 0);
 
         // Filtrar tarefas do mês/ano específico se disponível
         const tarefasDoMes =
