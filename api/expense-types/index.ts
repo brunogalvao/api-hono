@@ -1,84 +1,63 @@
 import { Hono } from "hono";
-import { handle } from "hono/vercel";
-import { createClient } from "@supabase/supabase-js";
+import { handleOptions } from "../config/apiHeader";
+import { getSupabaseClient } from "../config/supabaseClient";
+
+export const config = { runtime: "edge" };
 
 const app = new Hono();
 
-// Supabase Clients
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!,
-);
+// ✅ Rota OPTIONS necessária para CORS
+app.options("/api/expense-types", () => handleOptions());
 
-// ✅ CORS compatível com Vercel (manual)
-app.use(async (c, next) => {
-  c.header("Access-Control-Allow-Origin", "*");
-  c.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (c.req.method === "OPTIONS") {
-    return c.body(null, 204);
-  }
-  return next();
-});
-
-// GET tipos de gastos do usuário
+// ✅ GET - listar tipos de despesas
 app.get("/api/expense-types", async (c) => {
-  const auth = c.req.header("Authorization");
-  if (!auth) return c.json({ error: "Unauthorized" }, 401);
+    const supabase = getSupabaseClient(c);
 
-  const token = auth.replace("Bearer ", "");
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) {
-    return c.json({ error: "User not found" }, 404);
-  }
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser();
 
-  const { data: tipos, error: fetchError } = await supabase
-    .from("expense_types")
-    .select("id, nome")
-    .eq("user_id", data.user.id)
-    .order("created_at", { ascending: true });
+    if (userError || !user)
+        return c.json({ error: "Usuário não autenticado" }, 401);
 
-  if (fetchError) {
-    console.error("Erro ao buscar tipos:", fetchError.message);
-    return c.json({ error: fetchError.message }, 400);
-  }
+    const { data, error } = await supabase
+        .from("expense_types")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
 
-  return c.json(tipos);
+    if (error) return c.json({ error: error.message }, 500);
+    return c.json(data || []);
 });
 
-// POST novo tipo de gasto
+// ✅ POST - criar novo tipo de despesa
 app.post("/api/expense-types", async (c) => {
-  const auth = c.req.header("Authorization");
-  if (!auth) return c.json({ error: "Unauthorized" }, 401);
+    const supabase = getSupabaseClient(c);
 
-  const token = auth.replace("Bearer ", "");
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) {
-    return c.json({ error: "User not found" }, 404);
-  }
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser();
 
-  const body = await c.req.json();
-  const { nome } = body;
+    if (userError || !user)
+        return c.json({ error: "Usuário não autenticado" }, 401);
 
-  if (!nome) {
-    return c.json({ error: "Nome do tipo de gasto é obrigatório." }, 400);
-  }
+    const { nome } = await c.req.json();
+    if (!nome) {
+        return c.json({ error: "Nome do tipo de despesa é obrigatório" }, 400);
+    }
 
-  const { error: insertError } = await supabase.from("expense_types").insert({
-    nome,
-    user_id: data.user.id,
-  });
+    const { data, error } = await supabase
+        .from("expense_types")
+        .insert([{ user_id: user.id, nome }])
+        .select();
 
-  if (insertError) {
-    console.error("Erro ao inserir tipo:", insertError.message);
-    return c.json({ error: insertError.message }, 400);
-  }
-
-  return c.json({ success: true });
+    if (error) return c.json({ error: error.message }, 500);
+    return c.json(data?.[0]);
 });
 
-// Export Vercel handlers
-export const GET = handle(app);
-export const POST = handle(app);
-export const OPTIONS = handle(app);
-export default handle(app);
+export const GET = app.fetch;
+export const POST = app.fetch;
+export const OPTIONS = app.fetch;
+export default app.fetch;

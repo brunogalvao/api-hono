@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
-import { getSupabaseClient } from "../config/supabaseClient";
 
 export const config = { runtime: "edge" };
 
@@ -46,7 +45,6 @@ const analiseLocalInteligente = (
               ? "regular"
               : "bom";
 
-    // Análise baseada em regras financeiras inteligentes
     const analise = {
         statusEconomia,
         precisaEconomizar: percentualGasto > 70,
@@ -121,7 +119,6 @@ const analiseLocalInteligente = (
 
 // Função para tentar Google Gemini com retry e fallback
 const tentarGemini = async (prompt: string, tentativas: number = 3) => {
-    // Verificar se a API key está disponível
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey.trim() === "") {
         console.log("❌ GEMINI_API_KEY não configurada");
@@ -135,39 +132,15 @@ const tentarGemini = async (prompt: string, tentativas: number = 3) => {
             );
 
             const genAI = new GoogleGenerativeAI(apiKey);
-
-            // Tentar diferentes modelos se necessário
-            const modelosTeste = [
-                "gemini-1.5-flash",
-                "gemini-1.5-pro",
-                "gemini-pro",
-            ];
-
-            let model;
-            try {
-                model = genAI.getGenerativeModel({
-                    model: modelosTeste[tentativa - 1] || "gemini-1.5-flash",
-                    generationConfig: {
-                        temperature: 0.7,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 1024,
-                    },
-                });
-            } catch (modelError) {
-                console.log(
-                    `⚠️ Modelo ${modelosTeste[tentativa - 1]} não disponível, usando padrão`,
-                );
-                model = genAI.getGenerativeModel({
-                    model: "gemini-1.5-flash",
-                    generationConfig: {
-                        temperature: 0.7,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 1024,
-                    },
-                });
-            }
+            const model = genAI.getGenerativeModel({
+                model: "gemini-1.5-flash",
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 1024,
+                },
+            });
 
             console.log("📝 Enviando prompt para Gemini...");
             const result = await model.generateContent(prompt);
@@ -210,21 +183,6 @@ const tentarGemini = async (prompt: string, tentativas: number = 3) => {
                 }
             }
 
-            // Estratégia 3: JSON mais permissivo
-            if (!parsedResult) {
-                const permissiveMatch = aiResponse.match(
-                    /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/,
-                );
-                if (permissiveMatch) {
-                    try {
-                        parsedResult = JSON.parse(permissiveMatch[0]);
-                        console.log("✅ JSON extraído (estratégia 3)");
-                    } catch (parseError) {
-                        console.log("⚠️ Falha na estratégia 3 de parsing");
-                    }
-                }
-            }
-
             if (parsedResult) {
                 console.log("🎉 Gemini respondeu com sucesso!");
                 return parsedResult;
@@ -237,7 +195,6 @@ const tentarGemini = async (prompt: string, tentativas: number = 3) => {
                 error.message,
             );
 
-            // Log detalhado do erro
             if (
                 error.message.includes("overloaded") ||
                 error.message.includes("503")
@@ -249,7 +206,7 @@ const tentarGemini = async (prompt: string, tentativas: number = 3) => {
                     const delay = Math.min(
                         1000 * Math.pow(2, tentativa - 1),
                         10000,
-                    ); // Exponential backoff
+                    );
                     console.log(
                         `⏳ Aguardando ${delay}ms antes da próxima tentativa...`,
                     );
@@ -260,41 +217,14 @@ const tentarGemini = async (prompt: string, tentativas: number = 3) => {
                 console.log(
                     "🔑 Erro: API Key inválida - verifique se a chave está correta",
                 );
-                break; // Não tentar novamente para erros de API key
+                break;
             } else if (error.message.includes("QUOTA_EXCEEDED")) {
                 console.log(
                     "📊 Erro: Quota da API excedida - aguarde ou upgrade seu plano",
                 );
-                break; // Não tentar novamente para quota excedida
-            } else if (error.message.includes("PERMISSION_DENIED")) {
-                console.log(
-                    "🚫 Erro: Permissão negada - verifique se a API está habilitada",
-                );
-                break; // Não tentar novamente para permissão negada
-            } else if (error.message.includes("SAFETY")) {
-                console.log(
-                    "🛡️ Erro: Conteúdo bloqueado por segurança - ajuste o prompt",
-                );
-                break; // Não tentar novamente para filtro de segurança
-            } else if (error.name === "SyntaxError") {
-                console.log(
-                    "📝 Erro: Falha ao parsear JSON - resposta em formato inválido",
-                );
-                if (tentativa < tentativas) {
-                    console.log(
-                        "🔄 Tentando novamente com parsing diferente...",
-                    );
-                    continue;
-                }
-            } else {
-                console.log("🔧 Erro técnico:", error.name, "-", error.message);
-                if (tentativa < tentativas) {
-                    console.log("🔄 Tentando novamente...");
-                    continue;
-                }
+                break;
             }
 
-            // Se chegou até aqui e é a última tentativa, retornar null
             if (tentativa === tentativas) {
                 console.log(`💀 Gemini falhou após ${tentativas} tentativas`);
                 return null;
@@ -341,111 +271,48 @@ const tentarOpenAI = async (prompt: string) => {
     }
 };
 
-app.post("/api/ia/analise-investimento", async (c) => {
+// Endpoint para análise com dados fornecidos pelo frontend
+app.post("/api/ia/analise-frontend", async (c) => {
     try {
-        const supabase = getSupabaseClient(c);
+        console.log("📊 Iniciando análise com dados do frontend...");
 
-        // Verificar autenticação
-        const {
-            data: { user },
-            error: userError,
-        } = await supabase.auth.getUser();
+        // Receber dados do frontend
+        const { rendimentoMes, tarefasPagas, tarefasPendentes, cotacaoDolar } =
+            await c.req.json();
 
-        if (userError || !user) {
-            return c.json({ error: "Usuário não autenticado" }, 401);
-        }
-
-        // Receber dados do frontend (pode incluir mês/ano específico)
-        const requestBody = await c.req.json();
-        const { mes, ano, cotacaoDolar } = requestBody;
-
-        // Se não especificar mês/ano, usar atual
-        const currentDate = new Date();
-        const targetMonth = mes || currentDate.getMonth() + 1;
-        const targetYear = ano || currentDate.getFullYear();
-
-        // Buscar rendimentos reais do usuário no Supabase
-        const { data: incomes, error: incomesError } = await supabase
-            .from("incomes")
-            .select("*")
-            .eq("user_id", user.id);
-
-        if (incomesError) {
-            console.error("Erro ao buscar rendimentos:", incomesError);
-            return c.json(
-                { error: "Erro ao buscar dados de rendimentos" },
-                500,
-            );
-        }
-
-        // Buscar tarefas/despesas reais do usuário no Supabase
-        const { data: tasks, error: tasksError } = await supabase
-            .from("tasks")
-            .select("*")
-            .eq("user_id", user.id);
-
-        if (tasksError) {
-            console.error("Erro ao buscar tarefas:", tasksError);
-            return c.json({ error: "Erro ao buscar dados de tarefas" }, 500);
-        }
-
-        // Calcular rendimento total
-        const rendimentoMes =
-            incomes?.reduce((total, income) => {
-                return total + parseFloat(income.valor || "0");
-            }, 0) || 0;
-
-        // Filtrar tarefas do mês/ano específico se disponível
-        const tarefasDoMes =
-            tasks?.filter((task) => {
-                if (task.mes && task.ano) {
-                    return task.mes === targetMonth && task.ano === targetYear;
-                }
-                return true; // Se não tem mês/ano, considera todas
-            }) || [];
-
-        // Calcular tarefas pagas e pendentes
-        const tarefasPagas = tarefasDoMes
-            .filter((task) => task.done === true)
-            .reduce((total, task) => {
-                return total + parseFloat(task.price || "0");
-            }, 0);
-
-        const tarefasPendentes = tarefasDoMes
-            .filter((task) => task.done === false)
-            .reduce((total, task) => {
-                return total + parseFloat(task.price || "0");
-            }, 0);
-
-        // Obter cotação do dólar se não fornecida
-        let finalCotacaoDolar = cotacaoDolar;
-        if (!finalCotacaoDolar) {
-            try {
-                const dolarResponse = await fetch(
-                    "https://economia.awesomeapi.com.br/last/USD-BRL",
-                );
-                const dolarData = await dolarResponse.json();
-                finalCotacaoDolar = parseFloat(dolarData.USDBRL.bid);
-            } catch (error) {
-                console.warn(
-                    "Erro ao buscar cotação do dólar, usando valor padrão",
-                );
-                finalCotacaoDolar = 5.5; // Valor padrão
-            }
-        }
-
-        // Validar se temos dados suficientes
-        if (rendimentoMes === 0) {
+        // Validar dados obrigatórios
+        if (
+            !rendimentoMes ||
+            tarefasPagas === undefined ||
+            tarefasPendentes === undefined ||
+            !cotacaoDolar
+        ) {
             return c.json(
                 {
-                    error: "Nenhum rendimento encontrado",
-                    message: "Cadastre seus rendimentos para gerar análise",
-                    suggestion:
-                        "Use POST /api/incomes para adicionar rendimentos",
+                    error: "Dados obrigatórios ausentes",
+                    required: [
+                        "rendimentoMes",
+                        "tarefasPagas",
+                        "tarefasPendentes",
+                        "cotacaoDolar",
+                    ],
+                    received: {
+                        rendimentoMes: !!rendimentoMes,
+                        tarefasPagas: tarefasPagas !== undefined,
+                        tarefasPendentes: tarefasPendentes !== undefined,
+                        cotacaoDolar: !!cotacaoDolar,
+                    },
                 },
                 400,
             );
         }
+
+        console.log("📋 Dados recebidos:", {
+            rendimentoMes,
+            tarefasPagas,
+            tarefasPendentes,
+            cotacaoDolar,
+        });
 
         // Calcular dados financeiros
         const totalTarefas = tarefasPagas + tarefasPendentes;
@@ -461,44 +328,37 @@ app.post("/api/ia/analise-investimento", async (c) => {
         // Conversões para dólar
         const investimentoUSD = convertBRLtoUSD(
             investimentoRecomendado,
-            finalCotacaoDolar,
+            cotacaoDolar,
         );
         const investimentoDisponivelUSD = convertBRLtoUSD(
             investimentoDisponivel,
-            finalCotacaoDolar,
+            cotacaoDolar,
         );
 
-        // Análise de economia - situação crítica se gastos > 100%
+        // Análise de economia
         const precisaEconomizar = percentualGasto > 100;
         const economiaRecomendada =
             percentualGasto > 100 ? totalTarefas - rendimentoMes : 0;
 
         // Construir prompt para IA
         const prompt = `
-🚨 ANÁLISE FINANCEIRA CRÍTICA - DADOS DO FRONTEND:
+🚨 ANÁLISE FINANCEIRA - DADOS DO FRONTEND:
 
 SITUAÇÃO ATUAL:
 - Renda mensal: ${formatToBRL(rendimentoMes)}
 - Despesas totais: ${formatToBRL(totalTarefas)}
-- Déficit mensal: ${formatToBRL(Math.abs(rendimentoDisponivel))}
-- Percentual gasto: ${percentualGasto.toFixed(1)}% ${percentualGasto > 100 ? "🚨 CRÍTICO - GASTANDO MAIS QUE GANHA!" : ""}
+- Saldo disponível: ${formatToBRL(rendimentoDisponivel)}
+- Percentual gasto: ${percentualGasto.toFixed(1)}% ${percentualGasto > 100 ? "🚨 CRÍTICO!" : ""}
 
 DETALHAMENTO:
 - Tarefas pagas: ${formatToBRL(tarefasPagas)}
 - Tarefas pendentes: ${formatToBRL(tarefasPendentes)}
-- Rendimento disponível: ${formatToBRL(rendimentoDisponivel)} ${rendimentoDisponivel < 0 ? "🚨 NEGATIVO!" : ""}
-
-SITUAÇÃO CRÍTICA:
-${percentualGasto > 100 ? "🚨 EMERGÊNCIA: Você está gastando " + percentualGasto.toFixed(1) + "% da renda!" : ""}
-${rendimentoDisponivel < 0 ? "🚨 DÉFICIT: Você precisa de " + formatToBRL(Math.abs(rendimentoDisponivel)) + " a mais por mês!" : ""}
+- Cotação do dólar: ${formatToBRL(cotacaoDolar)}
 
 ANÁLISE NECESSÁRIA:
 1. Status da economia: ${percentualGasto > 100 ? "CRÍTICO" : percentualGasto > 70 ? "REGULAR" : "BOM"}
 2. Precisa economizar: ${precisaEconomizar ? "SIM - URGENTE!" : "NÃO"}
 3. Economia recomendada: ${formatToBRL(economiaRecomendada)}
-4. Estratégia de emergência se necessário
-5. Priorização de pagamentos críticos
-6. Redução imediata de despesas
 
 Forneça uma análise personalizada em JSON com:
 - statusEconomia (bom/regular/critico)
@@ -509,7 +369,7 @@ Forneça uma análise personalizada em JSON com:
 - distribuicaoInvestimento (object com poupanca, dolar, outros)
 - resumo (string)
 
-IMPORTANTE: Se percentualGasto > 100%, a situação é CRÍTICA e precisa de ação imediata!
+IMPORTANTE: Se percentualGasto > 100%, a situação é CRÍTICA!
 Responda APENAS com o JSON válido, sem texto adicional.
 `;
 
@@ -586,25 +446,21 @@ Responda APENAS com o JSON válido, sem texto adicional.
                         percentualSalario: 30,
                     },
                     cotacaoDolar: {
-                        valor: finalCotacaoDolar,
-                        valorBRL: formatToBRL(finalCotacaoDolar),
+                        valor: cotacaoDolar,
+                        valorBRL: formatToBRL(cotacaoDolar),
                         timestamp: new Date().toISOString(),
                     },
                     analise: analysisResult,
                     metadata: {
                         timestamp: new Date().toISOString(),
-                        fonte: "Dados Reais do Supabase",
+                        fonte: "Dados do Frontend",
                         versao: "8.0",
                         ia: iaUsada,
-                        usuario: user.id,
-                        dadosReais: {
-                            totalRendimentos: incomes?.length || 0,
-                            totalTarefas: tarefasDoMes.length,
-                            mesAno: `${targetMonth}/${targetYear}`,
+                        dadosRecebidos: {
                             rendimentoMes,
                             tarefasPagas,
                             tarefasPendentes,
-                            cotacaoDolar: finalCotacaoDolar,
+                            cotacaoDolar,
                             ultimaAtualizacao: new Date().toISOString(),
                         },
                     },
@@ -618,10 +474,12 @@ Responda APENAS com o JSON válido, sem texto adicional.
             },
         );
     } catch (error: any) {
+        console.error("❌ Erro na análise de investimento:", error);
         return c.json(
             {
                 error: "Erro na análise de investimento",
                 details: error.message,
+                timestamp: new Date().toISOString(),
             },
             500,
         );
