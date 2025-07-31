@@ -66,6 +66,9 @@ app.post("/api/ia/analise-investimento", async (c) => {
     // Dica simples: 30% do disponível
     const dicasEconomia = rendimentoDisponivel * 0.3;
 
+    // Resultado Liquido
+    const resultadoLiquido = rendimentoMes - tarefasPagas;
+
     return c.json(
       {
         tarefasPagas,
@@ -75,6 +78,7 @@ app.post("/api/ia/analise-investimento", async (c) => {
         percentualDisponivel,
         percentualGasto,
         dicasEconomia,
+        resultadoLiquido,
       },
       200,
     );
