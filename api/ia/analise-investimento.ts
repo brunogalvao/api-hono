@@ -39,106 +39,178 @@ const analiseLocalInteligente = (
     percentualGasto: number,
     economiaRecomendada: number,
 ) => {
-    const statusEconomia =
-        percentualGasto > 100
-            ? "CRÍTICO"
-            : percentualGasto > 80
-              ? "REGULAR"
-              : "BOM";
+    // 🎯 ANÁLISE REFINADA POR CENÁRIOS
 
-    // Investimento ZERO se há déficit
-    const investimentoSeguro =
-        rendimentoDisponivel > 0 ? rendimentoMes * 0.3 : 0;
+    // CENÁRIO 1: DÉFICIT (Gastos > Rendimento)
+    if (rendimentoDisponivel < 0) {
+        const deficitMensal = Math.abs(rendimentoDisponivel);
+        const fatorRisco = percentualGasto / 100; // Quantas vezes gasta mais que ganha
 
-    // Análise baseada em regras financeiras inteligentes
-    const analise = {
-        statusEconomia,
-        precisaEconomizar: percentualGasto > 100,
-        economiaRecomendada: percentualGasto > 100 ? economiaRecomendada : 0,
-        statusSituacao:
-            percentualGasto > 100 ? "EMERGÊNCIA FINANCEIRA" : "ESTÁVEL",
-        investimentoRecomendado: investimentoSeguro,
-        estrategiaInvestimento: {
-            curtoPrazo:
-                percentualGasto > 100
-                    ? "🚨 PARE TODOS OS GASTOS NÃO ESSENCIAIS"
-                    : percentualGasto > 80
-                      ? "⚠️ Reduzir despesas urgentemente"
-                      : "✅ Manter reserva de emergência",
-            medioPrazo:
-                percentualGasto > 100
-                    ? "💰 Buscar renda adicional URGENTE"
-                    : percentualGasto > 80
-                      ? "📊 Reestruturar orçamento"
-                      : "💰 Diversificar em CDB",
-            longoPrazo:
-                percentualGasto > 100
-                    ? "🎯 Equilibrar receitas e despesas"
-                    : percentualGasto > 80
-                      ? "💰 Focar em aumentar renda"
-                      : "🚀 Investir em dólar para proteção",
-        },
-        alertasCriticos:
-            percentualGasto > 100
-                ? [
-                      `🚨 DÉFICIT DE ${formatToBRL(Math.abs(rendimentoDisponivel))} POR MÊS`,
-                      `🚨 GASTANDO ${(percentualGasto / 100).toFixed(1)}X MAIS QUE GANHA`,
-                      "🚨 ZERO INVESTIMENTOS ATÉ EQUILIBRAR",
-                      "🚨 SITUAÇÃO INSUSTENTÁVEL",
-                  ]
-                : [],
-        dicasEconomia:
-            percentualGasto > 100
-                ? [
-                      "🚨 CORTE 90% DOS GASTOS IMEDIATAMENTE",
-                      "📋 Negocie parcelamento das dívidas",
-                      "💰 Busque renda extra URGENTE",
-                      "📊 Cancele TODOS os gastos opcionais",
-                      "🎯 Meta: reduzir R$ " + formatToBRL(economiaRecomendada),
-                      "⚠️ NÃO FAÇA NOVOS GASTOS",
-                  ]
-                : percentualGasto > 80
-                  ? [
-                        "⚠️ Reduzir despesas urgentemente",
-                        "📊 Revisar todas as despesas mensais",
-                        "🎯 Meta de economia de 20%",
-                    ]
-                  : [
-                        "✅ Excelente controle financeiro!",
-                        "🚀 Pode aumentar investimentos",
-                        "📈 Diversificar mais os investimentos",
-                    ],
-        distribuicaoInvestimento:
-            percentualGasto > 100
-                ? {
-                      poupanca: 0,
-                      dolar: 0,
-                      outros: 0,
-                      justificativa:
-                          "ZERO INVESTIMENTOS - SITUAÇÃO DE EMERGÊNCIA",
-                  }
-                : percentualGasto > 80
-                  ? {
-                        poupanca: 70,
-                        dolar: 15,
-                        outros: 15,
-                        justificativa: "Conservador devido aos gastos altos",
-                    }
-                  : {
-                        poupanca: 30,
-                        dolar: 35,
-                        outros: 35,
-                        justificativa: "Diversificação balanceada",
-                    },
-        resumo:
-            percentualGasto > 100
-                ? `🚨 EMERGÊNCIA: Déficit de ${formatToBRL(Math.abs(rendimentoDisponivel))} mensais. ZERO investimentos até equilibrar.`
-                : percentualGasto > 80
-                  ? `⚠️ ATENÇÃO: Gastando ${percentualGasto.toFixed(1)}% da renda. Reduza despesas antes de investir.`
-                  : `✅ SITUAÇÃO BOA: Gastando ${percentualGasto.toFixed(1)}% da renda. Pode investir ${formatToBRL(investimentoSeguro)}.`,
+        return {
+            cenario: "DÉFICIT_CRÍTICO",
+            statusEconomia: "CRÍTICO",
+            precisaEconomizar: true,
+            economiaRecomendada: deficitMensal,
+            investimentoRecomendado: 0,
+            rendimentoDisponivel: 0,
+
+            analiseDetalhada: {
+                rendimentoMensal: `${formatToBRL(rendimentoMes)} - Baixo para as despesas atuais`,
+                gastoMensal: `${formatToBRL(totalTarefas)} - ${fatorRisco.toFixed(1)}x maior que a renda`,
+                situacaoFinanceira: `DÉFICIT de ${formatToBRL(deficitMensal)} por mês`,
+                nivelRisco:
+                    fatorRisco > 3
+                        ? "EXTREMO"
+                        : fatorRisco > 2
+                          ? "ALTO"
+                          : "MÉDIO",
+            },
+
+            estrategiaRecuperacao: {
+                prioridade1:
+                    "🚨 EMERGÊNCIA: Cortar gastos em 80% imediatamente",
+                prioridade2: `💰 URGENTE: Aumentar renda em pelo menos ${formatToBRL(deficitMensal)}`,
+                prioridade3:
+                    "📊 CRÍTICO: Renegociar todas as dívidas pendentes",
+                metaMensal: `Reduzir déficit de ${formatToBRL(deficitMensal)} para zero`,
+            },
+
+            acoesPraticas: [
+                `Cortar ${formatToBRL(deficitMensal)} em gastos mensais`,
+                "Buscar renda extra: freelances, vendas, trabalho extra",
+                "Renegociar prazos e valores das dívidas",
+                "Cancelar assinaturas e serviços não essenciais",
+                "Priorizar apenas gastos básicos (alimentação, moradia)",
+                "Estabelecer plano de 90 dias para equilibrar contas",
+            ],
+
+            melhoriaEconomica: {
+                aumentoRendaMinimo: formatToBRL(deficitMensal),
+                reducaoGastosMinima: formatToBRL(deficitMensal * 0.7),
+                tempoEstimadoRecuperacao: "3-6 meses com disciplina total",
+            },
+
+            resumo: `🚨 SITUAÇÃO CRÍTICA: Déficit mensal de ${formatToBRL(deficitMensal)}. ZERO investimentos. Foque em equilibrar receitas e despesas URGENTEMENTE.`,
+        };
+    }
+
+    // CENÁRIO 2: EQUILÍBRIO (Gastos ≈ Rendimento)
+    if (
+        rendimentoDisponivel >= 0 &&
+        rendimentoDisponivel <= rendimentoMes * 0.1
+    ) {
+        const margemSeguranca = rendimentoDisponivel;
+
+        return {
+            cenario: "EQUILÍBRIO_FRÁGIL",
+            statusEconomia: "REGULAR",
+            precisaEconomizar: false,
+            economiaRecomendada: 0,
+            investimentoRecomendado: 0,
+            rendimentoDisponivel: margemSeguranca,
+
+            analiseDetalhada: {
+                rendimentoMensal: `${formatToBRL(rendimentoMes)} - Adequado para gastos atuais`,
+                gastoMensal: `${formatToBRL(totalTarefas)} - ${percentualGasto.toFixed(1)}% da renda`,
+                situacaoFinanceira: `Margem pequena de ${formatToBRL(margemSeguranca)}`,
+                nivelRisco: "MÉDIO - Sem margem para emergências",
+            },
+
+            estrategiaOtimizacao: {
+                foco1: "💰 Criar reserva de emergência de 6 meses",
+                foco2: "📈 Aumentar renda em 20-30% para investimentos",
+                foco3: "📊 Otimizar gastos para liberar 15% da renda",
+                metaMensal: `Criar sobra de ${formatToBRL(rendimentoMes * 0.2)} para investir`,
+            },
+
+            acoesPraticas: [
+                "Criar reserva de emergência antes de investir",
+                `Buscar renda adicional de ${formatToBRL(rendimentoMes * 0.3)}`,
+                "Otimizar gastos sem comprometer qualidade de vida",
+                "Revisar contratos e negociar melhores preços",
+                "Desenvolver habilidades para aumentar renda",
+                "Estabelecer metas de economia de 15-20% da renda",
+            ],
+
+            melhoriaEconomica: {
+                aumentoRendaRecomendado: formatToBRL(rendimentoMes * 0.3),
+                reducaoGastosOtima: formatToBRL(totalTarefas * 0.15),
+                potencialInvestimento: formatToBRL(rendimentoMes * 0.2),
+                tempoParaInvestir: "6-12 meses construindo reserva",
+            },
+
+            resumo: `⚖️ EQUILÍBRIO FRÁGIL: Sobra apenas ${formatToBRL(margemSeguranca)}. Foque em aumentar renda e criar reserva antes de investir.`,
+        };
+    }
+
+    // CENÁRIO 3: SUPERÁVIT (Rendimento > Gastos)
+    if (rendimentoDisponivel > rendimentoMes * 0.1) {
+        const percentualDisponivel =
+            (rendimentoDisponivel / rendimentoMes) * 100;
+        const investimentoSeguro = rendimentoDisponivel * 0.7; // 70% do disponível
+        const reservaEmergencia = rendimentoDisponivel * 0.3; // 30% para reserva
+
+        return {
+            cenario: "SUPERÁVIT_SAUDÁVEL",
+            statusEconomia: percentualDisponivel > 30 ? "EXCELENTE" : "BOM",
+            precisaEconomizar: false,
+            economiaRecomendada: 0,
+            investimentoRecomendado: investimentoSeguro,
+            rendimentoDisponivel: rendimentoDisponivel,
+
+            analiseDetalhada: {
+                rendimentoMensal: `${formatToBRL(rendimentoMes)} - Boa capacidade financeira`,
+                gastoMensal: `${formatToBRL(totalTarefas)} - ${percentualGasto.toFixed(1)}% da renda (controle excelente)`,
+                situacaoFinanceira: `Sobra de ${formatToBRL(rendimentoDisponivel)} (${percentualDisponivel.toFixed(1)}% da renda)`,
+                nivelRisco: "BAIXO - Situação financeira saudável",
+            },
+
+            estrategiaInvestimento: {
+                valorSeguroInvestir: formatToBRL(investimentoSeguro),
+                valorReservaEmergencia: formatToBRL(reservaEmergencia),
+                distribuicaoSugerida: {
+                    emergencia: `${formatToBRL(reservaEmergencia)} (30% do disponível)`,
+                    investimentoConservador: `${formatToBRL(investimentoSeguro * 0.4)} (28% do disponível - Poupança/CDB)`,
+                    investimentoModerado: `${formatToBRL(investimentoSeguro * 0.4)} (28% do disponível - Fundos/Dólar)`,
+                    investimentoArrojado: `${formatToBRL(investimentoSeguro * 0.2)} (14% do disponível - Ações/Cripto)`,
+                },
+            },
+
+            acoesPraticas: [
+                `Investir até ${formatToBRL(investimentoSeguro)} com segurança`,
+                "Manter reserva de emergência sempre atualizada",
+                "Diversificar investimentos por níveis de risco",
+                "Considerar aumentar percentual investido gradualmente",
+                "Estudar opções de investimento de longo prazo",
+                "Reavaliar estratégia a cada 3-6 meses",
+            ],
+
+            melhoriaEconomica: {
+                potencialMaximoInvestimento: formatToBRL(
+                    rendimentoDisponivel * 0.8,
+                ),
+                metaRendimentoAnual: `${(investimentoSeguro * 12 * 0.12).toFixed(0)}% ao ano (estimativa conservadora)`,
+                crescimentoPatrimonial: `${formatToBRL(investimentoSeguro * 12)} por ano em investimentos`,
+                proximoNivel:
+                    percentualDisponivel < 30
+                        ? "Aumentar renda para investir mais"
+                        : "Otimizar carteira de investimentos",
+            },
+
+            resumo: `✅ SITUAÇÃO EXCELENTE: Sobra de ${formatToBRL(rendimentoDisponivel)} mensais. Pode investir ${formatToBRL(investimentoSeguro)} com segurança total.`,
+        };
+    }
+
+    // Fallback (não deveria chegar aqui)
+    return {
+        cenario: "INDEFINIDO",
+        statusEconomia: "REGULAR",
+        precisaEconomizar: false,
+        economiaRecomendada: 0,
+        investimentoRecomendado: 0,
+        rendimentoDisponivel: rendimentoDisponivel,
+        resumo: "Análise em processamento...",
     };
-
-    return analise;
 };
 
 // Função para tentar Google Gemini com retry e fallback
@@ -514,69 +586,98 @@ app.post("/api/ia/analise-investimento", async (c) => {
             statusEconomico = "REGULAR";
         }
 
-        // Construir prompt para IA baseado na situação financeira
-        const prompt =
-            percentualGasto > 100
-                ? `
-🚨 SITUAÇÃO FINANCEIRA CRÍTICA - EMERGÊNCIA TOTAL:
+        // Construir prompt refinado baseado nos cenários financeiros
+        const analiseRefinada = analiseLocalInteligente(
+            rendimentoMes,
+            tarefasPagas,
+            tarefasPendentes,
+            totalTarefas,
+            rendimentoDisponivel,
+            percentualGasto,
+            economiaRecomendada,
+        );
 
-DADOS ALARMANTES:
-- Renda mensal: ${formatToBRL(rendimentoMes)}
-- Despesas totais: ${formatToBRL(totalTarefas)}
-- DÉFICIT: ${formatToBRL(Math.abs(rendimentoDisponivel))}
-- Gastando: ${percentualGasto.toFixed(1)}% da renda (${(percentualGasto / 100).toFixed(1)}x mais que ganha)
+        const prompt = `
+🎯 ANÁLISE FINANCEIRA REFINADA POR CENÁRIOS
 
-🚨 SITUAÇÃO DE EMERGÊNCIA FINANCEIRA:
-O usuário está em CRISE TOTAL - gastando ${(totalTarefas / rendimentoMes).toFixed(1)} vezes mais do que ganha!
+📊 DADOS FUNDAMENTAIS:
+- Rendimento Mensal: ${formatToBRL(rendimentoMes)}
+- Gastos Mensais: ${formatToBRL(totalTarefas)}
+- Resultado: ${rendimentoDisponivel >= 0 ? "SUPERÁVIT" : "DÉFICIT"} de ${formatToBRL(Math.abs(rendimentoDisponivel))}
+- Cenário Identificado: ${analiseRefinada.cenario}
 
-RESPONDA EM JSON EXATO:
+${
+    analiseRefinada.cenario === "DÉFICIT_CRÍTICO"
+        ? `
+🚨 CENÁRIO: DÉFICIT CRÍTICO
+O usuário está gastando ${(percentualGasto / 100).toFixed(1)}x mais do que ganha.
+
+ESTRATÉGIA DE RECUPERAÇÃO NECESSÁRIA:
+${analiseRefinada.estrategiaRecuperacao?.prioridade1}
+${analiseRefinada.estrategiaRecuperacao?.prioridade2}
+${analiseRefinada.estrategiaRecuperacao?.prioridade3}
+
+ANÁLISE REQUERIDA:
+- Investimento: ${formatToBRL(analiseRefinada.investimentoRecomendado)} (ZERO até equilibrar)
+- Economia necessária: ${formatToBRL(analiseRefinada.economiaRecomendada)}
+- Foco: Estratégias para eliminar déficit
+- Prazo: Máximo 6 meses para equilibrar
+`
+        : analiseRefinada.cenario === "EQUILÍBRIO_FRÁGIL"
+          ? `
+⚖️ CENÁRIO: EQUILÍBRIO FRÁGIL
+Situação controlada mas sem margem para investimentos seguros.
+
+ESTRATÉGIA DE OTIMIZAÇÃO:
+${analiseRefinada.estrategiaOtimizacao?.foco1}
+${analiseRefinada.estrategiaOtimizacao?.foco2}
+${analiseRefinada.estrategiaOtimizacao?.foco3}
+
+ANÁLISE REQUERIDA:
+- Investimento seguro: ${formatToBRL(analiseRefinada.investimentoRecomendado)} (apenas após reserva)
+- Foco: Criar margem de segurança e reserva
+- Meta: Aumentar renda em 20-30% para investir
+`
+          : `
+✅ CENÁRIO: SUPERÁVIT SAUDÁVEL
+Excelente controle financeiro com margem para investimentos.
+
+ESTRATÉGIA DE INVESTIMENTO:
+- Valor disponível: ${formatToBRL(rendimentoDisponivel)}
+- Investimento seguro: ${formatToBRL(analiseRefinada.investimentoRecomendado)}
+- Reserva emergência: ${formatToBRL(rendimentoDisponivel * 0.3)}
+
+ANÁLISE REQUERIDA:
+- Distribuição otimizada dos investimentos
+- Estratégias de crescimento patrimonial
+- Diversificação por perfil de risco
+`
+}
+
+RESPONDA EM JSON ESTRUTURADO:
 {
   "analise": {
-    "statusEconomia": "CRÍTICO",
-    "precisaEconomizar": true,
-    "economiaUrgente": ${economiaRecomendada},
-    "situacao": "EMERGÊNCIA FINANCEIRA"
+    "cenario": "${analiseRefinada.cenario}",
+    "statusEconomia": "${analiseRefinada.statusEconomia}",
+    "precisaEconomizar": ${analiseRefinada.precisaEconomizar},
+    "rendimentoAnalise": "análise do rendimento mensal",
+    "gastoAnalise": "análise dos gastos mensais",
+    "disponibilidadeInvestimento": "análise da capacidade de investir"
   },
   "recomendacoes": {
     "investimento": {
-      "valor": 0,
-      "justificativa": "ZERO investimentos - situação de emergência total"
+      "valor": ${analiseRefinada.investimentoRecomendado},
+      "justificativa": "baseado na análise de cenário",
+      "estrategia": "distribuição conforme perfil"
     },
-    "economia": {
-      "valor": ${economiaRecomendada},
-      "urgencia": "MÁXIMA",
-      "estrategia": "Cortar gastos imediatamente"
+    "melhoria": {
+      "foco": "área prioritária para melhoria",
+      "acoes": ["ação1", "ação2", "ação3"],
+      "prazos": "cronograma de implementação"
     }
   },
-  "estrategia": {
-    "prioridade1": "Parar TODOS os gastos não essenciais",
-    "prioridade2": "Buscar renda adicional urgente",
-    "prioridade3": "Revisar todas as despesas"
-  },
-  "alertas": [
-    "EMERGÊNCIA: Gastando ${(percentualGasto / 100).toFixed(1)}x mais que ganha",
-    "Precisa de ${formatToBRL(economiaRecomendada)} a menos por mês",
-    "ZERO investimentos até equilibrar as contas"
-  ]
-}`
-                : `
-📊 ANÁLISE FINANCEIRA REGULAR:
-
-SITUAÇÃO ATUAL:
-- Renda mensal: ${formatToBRL(rendimentoMes)}
-- Despesas totais: ${formatToBRL(totalTarefas)}
-- Disponível: ${formatToBRL(rendimentoDisponivel)}
-- Percentual gasto: ${percentualGasto.toFixed(1)}%
-
-ANÁLISE DETALHADA:
-- Status: ${statusEconomico}
-- Pode investir: ${investimentoRecomendado > 0 ? formatToBRL(investimentoRecomendado) : "Não recomendado"}
-- Situação: ${percentualGasto > 80 ? "Atenção aos gastos" : "Controlada"}
-
-Forneça análise completa com recomendações de investimento adequadas.
-6. Redução imediata de despesas
-
-Forneça uma análise personalizada em JSON com:
+  "resumo": "${analiseRefinada.resumo}"
+}
 - statusEconomia (bom/regular/critico)
 - precisaEconomizar (boolean)
 - economiaRecomendada (number)
