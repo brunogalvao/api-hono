@@ -76,6 +76,14 @@ app.post("/api/ia/analise-investimento", async (c) => {
     const dolarData = await dolarResponse.json();
     const cotacaoDolar = parseFloat(dolarData.USDBRL.bid);
 
+    // Compra Dollar
+    let quantidadeDolar = 0;
+
+    if (resultadoLiquido >= rendimentoMes * 0.3) {
+      const valorCompraDolar = resultadoLiquido * 0.3;
+      quantidadeDolar = valorCompraDolar / cotacaoDolar;
+    }
+
     return c.json(
       {
         tarefasPagas,
@@ -87,6 +95,7 @@ app.post("/api/ia/analise-investimento", async (c) => {
         dicasEconomia,
         resultadoLiquido,
         cotacaoDolar,
+        quantidadeDolar,
       },
       200,
     );
