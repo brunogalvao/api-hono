@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { handleOptions } from "../config/apiHeader";
 import { createClientWithAuth } from "../config/supabaseClient";
-import { TASK_STATUS } from "../model/tasks.model";
 
 export const config = { runtime: "edge" };
 
@@ -29,7 +28,7 @@ app.get("/api/tasks/total-paid", async (c) => {
       .from("tasks")
       .select("price")
       .eq("user_id", user.id)
-      .eq("done", TASK_STATUS.Pago);
+      .eq("done", true); // <-- agora é boolean
 
     if (error) {
       console.error("Erro ao buscar tasks:", error.message);
@@ -41,7 +40,11 @@ app.get("/api/tasks/total-paid", async (c) => {
       return c.json({ error: "Dados inválidos." }, 500);
     }
 
-    const totalPago = data.reduce((acc, item) => acc + (item.price ?? 0), 0);
+    const totalPago = data.reduce(
+      (acc, item) => acc + Number(item.price ?? 0),
+      0,
+    );
+
     return c.json({ total_paid: totalPago });
   } catch (e: any) {
     console.error("Erro inesperado:", e.message);
