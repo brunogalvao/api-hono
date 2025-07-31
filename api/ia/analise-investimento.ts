@@ -69,6 +69,13 @@ app.post("/api/ia/analise-investimento", async (c) => {
     // Resultado Liquido
     const resultadoLiquido = rendimentoMes - tarefasPagas;
 
+    // Dollar
+    const dolarResponse = await fetch(
+      "https://economia.awesomeapi.com.br/last/USD-BRL",
+    );
+    const dolarData = await dolarResponse.json();
+    const cotacaoDolar = parseFloat(dolarData.USDBRL.bid);
+
     return c.json(
       {
         tarefasPagas,
@@ -79,6 +86,7 @@ app.post("/api/ia/analise-investimento", async (c) => {
         percentualGasto,
         dicasEconomia,
         resultadoLiquido,
+        cotacaoDolar,
       },
       200,
     );
