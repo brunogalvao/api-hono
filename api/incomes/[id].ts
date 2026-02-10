@@ -27,9 +27,25 @@ app.delete("/api/incomes/:id", async (c) => {
     },
   );
 
-  const { error } = await supabase.from("incomes").delete().eq("id", id);
+  // Verifica o usuário autenticado
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return c.json({ error: "Usuário não autenticado." }, 401);
+  }
+
+  const { data, error } = await supabase
+    .from("incomes")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select();
 
   if (error) return c.json({ error: error.message }, 500);
+  if (!data?.length) return c.json({ error: "Rendimento não encontrado ou acesso negado." }, 404);
 
   return c.json({ success: true });
 });

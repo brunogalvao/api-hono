@@ -51,10 +51,10 @@ app.post("/api/ia/analise-investimento", async (c) => {
         (task) => task.mes === targetMonth && task.ano === targetYear,
       ) || [];
     const tarefasPagas = tarefasDoMes
-      .filter((task) => task.done)
+      .filter((task) => task.done === "Pago")
       .reduce((total, task) => total + parseFloat(task.price || "0"), 0);
     const tarefasPendentes = tarefasDoMes
-      .filter((task) => !task.done)
+      .filter((task) => task.done === "Pendente")
       .reduce((total, task) => total + parseFloat(task.price || "0"), 0);
 
     const totalTarefas = tarefasPagas + tarefasPendentes;

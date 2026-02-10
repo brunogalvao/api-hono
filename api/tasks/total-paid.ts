@@ -28,7 +28,7 @@ app.get("/api/tasks/total-paid", async (c) => {
       .from("tasks")
       .select("price")
       .eq("user_id", user.id)
-      .eq("done", true); // <-- agora é boolean
+      .eq("done", "Pago");
 
     if (error) {
       console.error("Erro ao buscar tasks:", error.message);
