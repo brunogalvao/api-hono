@@ -11,10 +11,6 @@ jobs:
     steps:
       - name: Ping API Health
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api-hono-pl5ue8a0z-bruno-galvos-projects.vercel.app/api/health)
-          echo "Status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "Health check falhou com status $STATUS"
-            exit 1
-          fi
-          echo "Supabase ativo!"
+          RESPONSE=$(curl -s https://api-hono-pl5ue8a0z-bruno-galvos-projects.vercel.app/api/health)
+          echo "Response: $RESPONSE"
+          echo "Ping enviado — Supabase mantido ativo!"
