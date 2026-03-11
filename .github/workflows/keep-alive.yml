@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Ping API Health
         run: |
-          RESPONSE=$(curl -s https://api-hono-pl5ue8a0z-bruno-galvos-projects.vercel.app/api/health)
+          RESPONSE=$(curl -s --fail https://api-hono-jet.vercel.app/api/health)
           echo "Response: $RESPONSE"
           echo "Ping enviado — Supabase mantido ativo!"
