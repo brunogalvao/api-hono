@@ -18,19 +18,19 @@ export async function errorHandler(c: Context, next: Next) {
   }
 }
 
-// Middleware para logging de requisições
+// Middleware para logging de requisições (ignora OPTIONS/preflight)
 export async function requestLogger(c: Context, next: Next) {
+  if (c.req.method === "OPTIONS") return next();
+
   const start = Date.now();
   const method = c.req.method;
   const url = c.req.url;
-  
-  console.log(`🚀 ${method} ${url} - Iniciando`);
-  
+
   await next();
-  
+
   const duration = Date.now() - start;
   const status = c.res.status;
-  
-  console.log(`✅ ${method} ${url} - ${status} (${duration}ms)`);
+
+  console.log(`${method} ${url} → ${status} (${duration}ms)`);
 }
 
