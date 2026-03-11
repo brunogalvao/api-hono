@@ -1,13 +1,9 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { getSupabaseClient } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
-
-// ✅ Rota OPTIONS necessária para CORS
-app.options("/api/user", () => handleOptions());
+const app = createBaseApp();
 
 // ✅ GET - obter perfil do usuário
 app.get("/api/user", async (c) => {

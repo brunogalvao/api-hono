@@ -1,19 +1,20 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { getSupabaseClient } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
+import { getDolarRate } from "../utils/currency";
+import type { MonthlyTotal } from "../model/monthly-total.model";
 import OpenAI from "openai";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
+const app = createBaseApp();
 
-// Inicializar OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
-});
+// Validar e inicializar OpenAI
+const openaiApiKey = process.env.OPENAI_API_KEY;
+if (!openaiApiKey) {
+  throw new Error("OPENAI_API_KEY é obrigatória");
+}
 
-// CORS
-app.options("/", () => handleOptions());
+const openai = new OpenAI({ apiKey: openaiApiKey });
 
 // GET para teste
 app.get("/", (c) => {
@@ -45,14 +46,6 @@ app.post("/", async (c) => {
       return c.json({ error: "Erro ao buscar rendimentos" }, 500);
     }
 
-    // Define o tipo para o objeto de agrupamento
-    type MonthlyTotal = {
-      mes: string;
-      ano: number;
-      total: number;
-      quantidade: number;
-    };
-
     // Calcular totais por mês
     const monthlyTotals: Record<string, MonthlyTotal> = incomes.reduce((acc, income) => {
       const key = `${income.mes}_${income.ano}`;
@@ -73,10 +66,8 @@ app.post("/", async (c) => {
     const totalAnual = totalsArray.reduce((sum: number, month: MonthlyTotal) => sum + month.total, 0);
     const mediaMensal = totalAnual / 12;
 
-    // Obter cotação do dólar
-    const dolarResponse = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
-    const dolarData = await dolarResponse.json();
-    const cotacaoDolar = parseFloat(dolarData.USDBRL.bid);
+    // Obter cotação do dólar (com timeout e fallback)
+    const cotacaoDolar = await getDolarRate();
 
     // Preparar dados para análise da IA
     const analysisData = {

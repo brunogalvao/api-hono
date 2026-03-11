@@ -1,33 +1,20 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader"; // ajuste o caminho se for diferente
+import { createClientWithAuth } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
+const app = createBaseApp();
 
-// ✅ CORS para DELETE /api/incomes/:id
-app.options("/api/incomes/:id", () => handleOptions());
-
-// ✅ DELETE - ROTA: /api/incomes/:id
+// DELETE - ROTA: /api/incomes/:id
 app.delete("/api/incomes/:id", async (c) => {
-  const token = c.req.header("Authorization")?.replace("Bearer ", "");
+  const token = c.req.header("Authorization") ?? "";
   if (!token) return c.json({ error: "Token ausente" }, 401);
 
   const id = c.req.param("id");
   if (!id) return c.json({ error: "ID do rendimento ausente" }, 400);
 
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    },
-  );
+  const supabase = createClientWithAuth(token);
 
-  // Verifica o usuário autenticado
   const {
     data: { user },
     error: userError,

@@ -1,13 +1,9 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { createClientWithAuth } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
-
-// CORS
-app.options("/api/tasks/total-price", () => handleOptions());
+const app = createBaseApp();
 
 // GET /api/tasks/total-price – soma apenas tarefas do usuário autenticado
 app.get("/api/tasks/total-price", async (c) => {
@@ -38,3 +34,4 @@ app.get("/api/tasks/total-price", async (c) => {
 
 export const GET = app.fetch;
 export const OPTIONS = app.fetch;
+export default app.fetch;

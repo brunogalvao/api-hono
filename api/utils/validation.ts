@@ -59,4 +59,27 @@ export const validateIncomeData = (data: any) => {
 // Validação de dados de tarefa
 export const validateTaskData = (data: any) => {
   return validateRequiredFields(data, ["descricao", "preco"]);
-}; 
+};
+
+// Validação de parâmetros com retorno string (compatível com uso em query params)
+export function validateRequiredParams(params: Record<string, any>, requiredFields: string[]): string | null {
+  for (const field of requiredFields) {
+    if (!params[field]) {
+      return `Campo obrigatório ausente: ${field}`;
+    }
+  }
+  return null;
+}
+
+// Validação de tipos de dados com retorno string
+export function validateTypes(
+  params: Record<string, any>,
+  validations: Record<string, (value: any) => boolean>
+): string | null {
+  for (const [field, validator] of Object.entries(validations)) {
+    if (params[field] !== undefined && !validator(params[field])) {
+      return `Tipo inválido para o campo: ${field}`;
+    }
+  }
+  return null;
+}

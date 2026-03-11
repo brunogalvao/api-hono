@@ -1,17 +1,10 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { getSupabaseClient } from "../config/supabaseClient";
-import { errorHandler, requestLogger, validateRequiredParams, validateTypes } from "../config/errorHandler";
+import { createBaseApp } from "../config/baseApp";
+import { createTaskSchema } from "../model/task.schema";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
-
-// Middlewares globais
-app.use("*", errorHandler);
-app.use("*", requestLogger);
-
-app.options("/api/tasks", () => handleOptions());
+const app = createBaseApp();
 
 // GET
 app.get("/api/tasks", async (c) => {
@@ -24,25 +17,14 @@ app.get("/api/tasks", async (c) => {
   if (userError || !user)
     return c.json({ error: "Usuário não autenticado." }, 401);
 
-  const url = new URL(c.req.url);
-  const month = Number(url.searchParams.get("month"));
-  const year = Number(url.searchParams.get("year"));
+  const month = Number(c.req.query("month"));
+  const year = Number(c.req.query("year"));
 
-  // Validação melhorada
-  const validationError = validateRequiredParams({ month, year }, ['month', 'year']);
-  if (validationError) {
-    return c.json({ error: validationError }, 400);
+  if (!month || !year) {
+    return c.json({ error: "Parâmetros 'month' e 'year' são obrigatórios." }, 400);
   }
-
-  const typeValidationError = validateTypes(
-    { month, year },
-    {
-      month: (value) => typeof value === 'number' && value >= 1 && value <= 12,
-      year: (value) => typeof value === 'number' && value >= 2000
-    }
-  );
-  if (typeValidationError) {
-    return c.json({ error: typeValidationError }, 400);
+  if (month < 1 || month > 12 || year < 2000) {
+    return c.json({ error: "Parâmetros 'month' ou 'year' inválidos." }, 400);
   }
 
   const { data, error } = await supabase
@@ -69,21 +51,15 @@ app.post("/api/tasks", async (c) => {
     return c.json({ error: "Usuário não autenticado." }, 401);
 
   const body = await c.req.json();
+  const parsed = createTaskSchema.safeParse(body);
 
-  // você pode validar aqui também se quiser
-  if (
-    typeof body.mes !== "number" ||
-    typeof body.ano !== "number" ||
-    body.mes < 1 ||
-    body.mes > 12 ||
-    body.ano < 2000
-  ) {
-    return c.json({ error: "Campos 'mes' e 'ano' inválidos." }, 400);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.errors[0].message }, 400);
   }
 
   const { data, error } = await supabase
     .from("tasks")
-    .insert([{ ...body, user_id: user.id }])
+    .insert([{ ...parsed.data, user_id: user.id }])
     .select();
 
   if (error) return c.json({ error: error.message }, 500);
@@ -93,3 +69,4 @@ app.post("/api/tasks", async (c) => {
 export const GET = app.fetch;
 export const POST = app.fetch;
 export const OPTIONS = app.fetch;
+export default app.fetch;

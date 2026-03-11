@@ -1,8 +1,9 @@
-import { Hono } from "hono";
 import { getSupabaseClient } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
+import { getDolarRate } from "../utils/currency";
 
 export const config = { runtime: "edge" };
-const app = new Hono();
+const app = createBaseApp();
 
 app.post("/api/ia/analise-investimento", async (c) => {
   try {
@@ -69,12 +70,8 @@ app.post("/api/ia/analise-investimento", async (c) => {
     // Resultado Liquido
     const resultadoLiquido = rendimentoMes - tarefasPagas;
 
-    // Dollar
-    const dolarResponse = await fetch(
-      "https://economia.awesomeapi.com.br/last/USD-BRL",
-    );
-    const dolarData = await dolarResponse.json();
-    const cotacaoDolar = parseFloat(dolarData.USDBRL.bid);
+    // Cotação do dólar (com timeout e fallback)
+    const cotacaoDolar = await getDolarRate();
 
     // Compra Dollar
     let quantidadeDolar = 0;

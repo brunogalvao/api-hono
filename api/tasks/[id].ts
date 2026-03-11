@@ -1,13 +1,10 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { createClientWithAuth } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
+import { updateTaskSchema } from "../model/task.schema";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
-
-// CORS
-app.options("/api/tasks/:id", () => handleOptions());
+const app = createBaseApp();
 
 // PUT /api/tasks/:id
 app.put("/api/tasks/:id", async (c) => {
@@ -26,9 +23,14 @@ app.put("/api/tasks/:id", async (c) => {
     return c.json({ error: "Usuário não autenticado." }, 401);
   }
 
+  const parsed = updateTaskSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.errors[0].message }, 400);
+  }
+
   const { data, error } = await supabase
     .from("tasks")
-    .update(body)
+    .update(parsed.data)
     .eq("id", id)
     .eq("user_id", user.id)
     .select();
@@ -69,7 +71,7 @@ app.delete("/api/tasks/:id", async (c) => {
   return c.json({ message: "Tarefa deletada com sucesso." });
 });
 
-// Exports
 export const OPTIONS = app.fetch;
 export const PUT = app.fetch;
 export const DELETE = app.fetch;
+export default app.fetch;

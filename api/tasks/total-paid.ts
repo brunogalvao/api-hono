@@ -1,13 +1,9 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { createClientWithAuth } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
-
-// CORS
-app.options("/api/tasks/total-paid", () => handleOptions());
+const app = createBaseApp();
 
 app.get("/api/tasks/total-paid", async (c) => {
   try {
@@ -54,3 +50,4 @@ app.get("/api/tasks/total-paid", async (c) => {
 
 export const GET = app.fetch;
 export const OPTIONS = app.fetch;
+export default app.fetch;

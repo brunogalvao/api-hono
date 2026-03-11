@@ -1,15 +1,13 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { getSupabaseClient } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
+import { createIncomeSchema, updateIncomeSchema } from "../model/income.schema";
+import type { MonthlyTotal } from "../model/monthly-total.model";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
+const app = createBaseApp();
 
-// ✅ Rota OPTIONS necessária para CORS
-app.options("/api/incomes", () => handleOptions());
-
-// ✅ GET - listar rendimento
+// GET - listar rendimentos
 app.get("/api/incomes", async (c) => {
   const supabase = getSupabaseClient(c);
 
@@ -30,7 +28,7 @@ app.get("/api/incomes", async (c) => {
   return c.json(data || []);
 });
 
-// ✅ GET - total por mês
+// GET - total por mês
 app.get("/api/incomes/total-por-mes", async (c) => {
   const supabase = getSupabaseClient(c);
 
@@ -49,32 +47,20 @@ app.get("/api/incomes/total-por-mes", async (c) => {
 
   if (error) return c.json({ error: error.message }, 500);
 
-  // Define o tipo para o objeto de agrupamento
-  type MonthlyTotal = {
-    mes: string;
-    ano: number;
-    total: number;
-    quantidade: number;
-  };
+  const totalsByMonth: Record<string, MonthlyTotal> = (data || []).reduce(
+    (acc: Record<string, MonthlyTotal>, income: any) => {
+      const key = `${income.mes}_${income.ano}`;
+      if (!acc[key]) {
+        acc[key] = { mes: income.mes, ano: income.ano, total: 0, quantidade: 0 };
+      }
+      acc[key].total += parseFloat(income.valor);
+      acc[key].quantidade += 1;
+      return acc;
+    },
+    {} as Record<string, MonthlyTotal>
+  );
 
-  // Agrupa por mês e ano, somando os valores
-  const totalsByMonth: Record<string, MonthlyTotal> = (data || []).reduce((acc: Record<string, MonthlyTotal>, income: any) => {
-    const key = `${income.mes}_${income.ano}`;
-    if (!acc[key]) {
-      acc[key] = {
-        mes: income.mes,
-        ano: income.ano,
-        total: 0,
-        quantidade: 0
-      };
-    }
-    acc[key].total += parseFloat(income.valor);
-    acc[key].quantidade += 1;
-    return acc;
-  }, {} as Record<string, MonthlyTotal>);
-
-  // Converte para array e ordena por ano e mês
-  const result = Object.values(totalsByMonth).sort((a: MonthlyTotal, b: MonthlyTotal) => {
+  const result = Object.values(totalsByMonth).sort((a, b) => {
     if (a.ano !== b.ano) return a.ano - b.ano;
     return a.mes.localeCompare(b.mes);
   });
@@ -82,7 +68,7 @@ app.get("/api/incomes/total-por-mes", async (c) => {
   return c.json(result);
 });
 
-// ✅ POST - cria novo rendimento
+// POST - cria novo rendimento
 app.post("/api/incomes", async (c) => {
   const supabase = getSupabaseClient(c);
 
@@ -94,21 +80,23 @@ app.post("/api/incomes", async (c) => {
   if (userError || !user)
     return c.json({ error: "Usuário não autenticado" }, 401);
 
-  const { descricao, valor, mes, ano } = await c.req.json();
-  if (!valor || !mes || !ano) {
-    return c.json({ error: "Campos obrigatórios ausentes" }, 400);
+  const body = await c.req.json();
+  const parsed = createIncomeSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.errors[0].message }, 400);
   }
 
   const { data, error } = await supabase
     .from("incomes")
-    .insert([{ user_id: user.id, descricao, valor, mes, ano }])
+    .insert([{ user_id: user.id, ...parsed.data }])
     .select();
 
   if (error) return c.json({ error: error.message }, 500);
   return c.json(data?.[0]);
 });
 
-// ✅ PATCH - atualiza rendimento existente
+// PATCH - atualiza rendimento existente
 app.patch("/api/incomes", async (c) => {
   const supabase = getSupabaseClient(c);
 
@@ -120,12 +108,18 @@ app.patch("/api/incomes", async (c) => {
   if (userError || !user)
     return c.json({ error: "Usuário não autenticado" }, 401);
 
-  const { id, descricao, valor, mes, ano } = await c.req.json();
-  if (!id) return c.json({ error: "ID do rendimento ausente" }, 400);
+  const body = await c.req.json();
+  const parsed = updateIncomeSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.errors[0].message }, 400);
+  }
+
+  const { id, ...updateData } = parsed.data;
 
   const { data, error } = await supabase
     .from("incomes")
-    .update({ descricao, valor, mes, ano })
+    .update(updateData)
     .eq("id", id)
     .eq("user_id", user.id)
     .select();

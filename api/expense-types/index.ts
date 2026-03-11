@@ -1,15 +1,11 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { getSupabaseClient } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
+const app = createBaseApp();
 
-// ✅ Rota OPTIONS necessária para CORS
-app.options("/api/expense-types", () => handleOptions());
-
-// ✅ GET - listar tipos de despesas
+// GET - listar tipos de despesas
 app.get("/api/expense-types", async (c) => {
     const supabase = getSupabaseClient(c);
 
@@ -31,7 +27,7 @@ app.get("/api/expense-types", async (c) => {
     return c.json(data || []);
 });
 
-// ✅ POST - criar novo tipo de despesa
+// POST - criar novo tipo de despesa
 app.post("/api/expense-types", async (c) => {
     const supabase = getSupabaseClient(c);
 

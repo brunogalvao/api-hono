@@ -1,13 +1,10 @@
-import { Hono } from "hono";
-import { handleOptions } from "../config/apiHeader";
 import { getSupabaseClient } from "../config/supabaseClient";
+import { createBaseApp } from "../config/baseApp";
+import type { MonthlyTotal } from "../model/monthly-total.model";
 
 export const config = { runtime: "edge" };
 
-const app = new Hono();
-
-// ✅ Rota OPTIONS necessária para CORS
-app.options("/api/incomes/total-por-mes", () => handleOptions());
+const app = createBaseApp();
 
 // ✅ GET - total por mês
 app.get("/api/incomes/total-por-mes", async (c) => {
@@ -27,14 +24,6 @@ app.get("/api/incomes/total-por-mes", async (c) => {
     .eq("user_id", user.id);
 
   if (error) return c.json({ error: error.message }, 500);
-
-  // Define o tipo para o objeto de agrupamento
-  type MonthlyTotal = {
-    mes: string;
-    ano: number;
-    total: number;
-    quantidade: number;
-  };
 
   // Agrupa por mês e ano, somando os valores
   const totalsByMonth: Record<string, MonthlyTotal> = data.reduce((acc, income) => {

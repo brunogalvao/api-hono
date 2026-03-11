@@ -34,22 +34,3 @@ export async function requestLogger(c: Context, next: Next) {
   console.log(`✅ ${method} ${url} - ${status} (${duration}ms)`);
 }
 
-// Função para validar parâmetros obrigatórios
-export function validateRequiredParams(params: Record<string, any>, requiredFields: string[]): string | null {
-  for (const field of requiredFields) {
-    if (!params[field]) {
-      return `Campo obrigatório ausente: ${field}`;
-    }
-  }
-  return null;
-}
-
-// Função para validar tipos de dados
-export function validateTypes(params: Record<string, any>, validations: Record<string, (value: any) => boolean>): string | null {
-  for (const [field, validator] of Object.entries(validations)) {
-    if (params[field] !== undefined && !validator(params[field])) {
-      return `Tipo inválido para o campo: ${field}`;
-    }
-  }
-  return null;
-} 
