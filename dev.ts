@@ -3,6 +3,8 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createClient } from "@supabase/supabase-js";
+import { GET as getOpenApi } from "./api/openapi";
+import { GET as getSwagger } from "./api/swagger";
 
 const app = new Hono();
 
@@ -495,6 +497,13 @@ app.post("/api/ia/analise-investimento", async (c) => {
     return c.json({ error: "Erro interno", details: error.message }, 500);
   }
 });
+
+// ══════════════════════════════════════════════════════════
+// SWAGGER / OPENAPI
+// ══════════════════════════════════════════════════════════
+
+app.get("/api/openapi", () => getOpenApi());
+app.get("/api/swagger", () => getSwagger());
 
 // ══════════════════════════════════════════════════════════
 // HOMEPAGE
