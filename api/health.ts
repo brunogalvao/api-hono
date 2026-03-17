@@ -6,15 +6,12 @@ export const GET = async () => {
   const startTime = Date.now();
   
   try {
-    // Teste de conexão com Supabase
+    // Teste de conexão com Supabase via auth API (não depende de RLS)
     const supabase = getPublicSupabaseClient();
-    const { data: supabaseTest, error: supabaseError } = await supabase
-      .from('tasks')
-      .select('count')
-      .limit(1);
+    const { error: supabaseError } = await supabase.auth.getSession();
     
     const healthStatus = {
-      status: 'healthy',
+      status: supabaseError ? 'degraded' : 'healthy',
       timestamp: new Date().toISOString(),
       uptime: Date.now() - startTime,
       services: {
