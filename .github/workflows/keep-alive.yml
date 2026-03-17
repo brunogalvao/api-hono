@@ -11,6 +11,15 @@ jobs:
     steps:
       - name: Ping API Health
         run: |
-          RESPONSE=$(curl -s --fail https://api-hono-jet.vercel.app/api/health)
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" https://api-hono-jet.vercel.app/api/health)
+          RESPONSE=$(cat /tmp/response.json)
+          echo "HTTP Status: $HTTP_CODE"
           echo "Response: $RESPONSE"
-          echo "Ping enviado — Supabase mantido ativo!"
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Supabase healthy — mantido ativo!"
+          elif [ "$HTTP_CODE" = "503" ]; then
+            echo "Supabase estava pausado, ping enviado para reativar."
+          else
+            echo "Resposta inesperada: $HTTP_CODE"
+            exit 1
+          fi
