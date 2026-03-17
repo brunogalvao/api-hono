@@ -200,18 +200,33 @@ api-hono/
 
 ### Scripts Disponíveis
 ```bash
-pnpm dev          # Desenvolvimento local
+pnpm dev           # Desenvolvimento local
 pnpm build         # Build para produção
 pnpm start         # Executar build
+pnpm test:smoke    # Smoke tests contra a URL de produção
 ```
 
 ### Testes
+
+O projeto usa **Vitest** para smoke tests contra a URL real da Vercel. Os testes verificam se a API está respondendo corretamente após cada deploy, sem precisar de banco de dados mockado.
+
 ```bash
-# Testar endpoints localmente
-curl http://localhost:3000/api/ping
-curl http://localhost:3000/api/health
-curl http://localhost:3000/api/docs
+# Rodar smoke tests contra a URL de produção
+pnpm test:smoke
 ```
+
+O que é testado:
+
+| Teste | Endpoint | Esperado |
+|---|---|---|
+| Conectividade | `GET /api/ping` | 200 + `pong` |
+| Saúde da API | `GET /api/health` | 200 ou 503 com JSON válido |
+| Auth tasks | `GET /api/tasks` sem token | 401 |
+| Auth incomes | `GET /api/incomes` sem token | 401 |
+| Auth user | `GET /api/user` sem token | 401 |
+| Validação params | `GET /api/tasks` sem query | 400 ou 401 |
+
+Os testes também rodam automaticamente via GitHub Actions sempre que um deploy em **produção** na Vercel é concluído com sucesso (`.github/workflows/smoke-test.yml`).
 
 ## 📈 Roadmap
 
