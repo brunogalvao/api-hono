@@ -4,6 +4,7 @@ export const createTaskSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   price: z.number().nonnegative("Preço deve ser positivo").optional(),
   done: z.enum(["Pago", "Fixo", "Pendente"]).optional(),
+  type: z.string().optional(),
   mes: z
     .number()
     .int()
