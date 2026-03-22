@@ -62,7 +62,7 @@ app.get("/api/incomes/total-por-mes", async (c) => {
 
   const result = Object.values(totalsByMonth).sort((a, b) => {
     if (a.ano !== b.ano) return a.ano - b.ano;
-    return a.mes.localeCompare(b.mes);
+    return Number(a.mes) - Number(b.mes);
   });
 
   return c.json(result);
