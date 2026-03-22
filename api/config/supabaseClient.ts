@@ -12,13 +12,27 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 // Cliente para operações que precisam de autenticação (via header Authorization)
 export function getSupabaseClient(c: Context) {
-  return createClient(supabaseUrl!, supabaseServiceKey!, {
+  const authHeader = c.req.header("Authorization") ?? "";
+  const token = authHeader.replace("Bearer ", "") || undefined;
+
+  const client = createClient(supabaseUrl!, supabaseServiceKey!, {
     global: {
       headers: {
-        Authorization: c.req.header("Authorization") ?? "",
+        Authorization: authHeader,
       },
     },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
   });
+
+  // getUser() sem argumento não funciona em clientes criados por requisição
+  // (sem sessão armazenada). Injetamos o token automaticamente.
+  const originalGetUser = client.auth.getUser.bind(client.auth);
+  client.auth.getUser = (jwt?: string) => originalGetUser(jwt ?? token);
+
+  return client;
 }
 
 // Cliente para operações públicas (sem autenticação)
