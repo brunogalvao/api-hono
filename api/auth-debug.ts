@@ -6,6 +6,17 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Content-Type": "application/json",
+  "Cache-Control": "no-cache",
+};
+
+export const OPTIONS = async () =>
+  new Response(null, { status: 204, headers: CORS_HEADERS });
+
 export const GET = async (req: Request) => {
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.replace("Bearer ", "") || null;
@@ -32,14 +43,14 @@ export const GET = async (req: Request) => {
   if (!supabaseUrl || !supabaseServiceKey) {
     return new Response(
       JSON.stringify({ ...result, fatal: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }, null, 2),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: CORS_HEADERS }
     );
   }
 
   if (!token) {
     return new Response(
       JSON.stringify({ ...result, auth_test: "Skipped — no token in Authorization header" }, null, 2),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      { status: 400, headers: CORS_HEADERS }
     );
   }
 
@@ -67,9 +78,6 @@ export const GET = async (req: Request) => {
 
   return new Response(JSON.stringify(result, null, 2), {
     status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-cache",
-    },
+    headers: CORS_HEADERS,
   });
 };
