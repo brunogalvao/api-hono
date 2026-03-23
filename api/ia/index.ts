@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "../config/supabaseClient";
+import { getSupabaseClient, getAuthenticatedUser } from "../config/supabaseClient";
 import { createBaseApp } from "../config/baseApp";
 import { getDolarRate } from "../utils/currency";
 import type { MonthlyTotal } from "../model/monthly-total.model";
@@ -30,7 +30,7 @@ app.post("/", async (c) => {
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser();
+    } = await getAuthenticatedUser(c);
 
     if (userError || !user) {
       return c.json({ error: "Usuário não autenticado" }, 401);

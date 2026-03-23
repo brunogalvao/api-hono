@@ -1,4 +1,4 @@
-import { createClientWithAuth } from "../config/supabaseClient";
+import { createClientWithAuth, getAuthenticatedUser } from "../config/supabaseClient";
 import { createBaseApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
@@ -16,7 +16,7 @@ app.get(path, async (c) => {
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
+  } = await getAuthenticatedUser(c);
 
   if (userError || !user) return c.json({ error: "Usuário inválido" }, 401);
 

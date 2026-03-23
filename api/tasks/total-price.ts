@@ -1,4 +1,4 @@
-import { createClientWithAuth } from "../config/supabaseClient";
+import { createClientWithAuth, getAuthenticatedUser } from "../config/supabaseClient";
 import { createBaseApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
@@ -13,7 +13,7 @@ app.get("/api/tasks/total-price", async (c) => {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getAuthenticatedUser(c);
 
   if (authError || !user) {
     return c.json({ error: "Usuário não autenticado." }, 401);

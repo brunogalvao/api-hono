@@ -10,12 +10,17 @@ if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error("SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios");
 }
 
+// Extrai o token JWT do header Authorization
+export function extractToken(c: Context): string | undefined {
+  const authHeader = c.req.header("Authorization") ?? "";
+  return authHeader.replace("Bearer ", "") || undefined;
+}
+
 // Cliente para operações que precisam de autenticação (via header Authorization)
 export function getSupabaseClient(c: Context) {
   const authHeader = c.req.header("Authorization") ?? "";
-  const token = authHeader.replace("Bearer ", "") || undefined;
 
-  const client = createClient(supabaseUrl!, supabaseServiceKey!, {
+  return createClient(supabaseUrl!, supabaseServiceKey!, {
     global: {
       headers: {
         Authorization: authHeader,
@@ -26,13 +31,15 @@ export function getSupabaseClient(c: Context) {
       persistSession: false,
     },
   });
+}
 
-  // getUser() sem argumento não funciona em clientes criados por requisição
-  // (sem sessão armazenada). Injetamos o token automaticamente.
-  const originalGetUser = client.auth.getUser.bind(client.auth);
-  client.auth.getUser = (jwt?: string) => originalGetUser(jwt ?? token);
-
-  return client;
+// Valida o JWT do request e retorna o usuário autenticado.
+// Usa auth.getUser(token) explicitamente, pois clientes criados
+// por request não têm sessão interna armazenada.
+export async function getAuthenticatedUser(c: Context) {
+  const token = extractToken(c);
+  const supabase = getSupabaseClient(c);
+  return supabase.auth.getUser(token);
 }
 
 // Cliente para operações públicas (sem autenticação)

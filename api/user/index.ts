@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "../config/supabaseClient";
+import { getSupabaseClient, getAuthenticatedUser } from "../config/supabaseClient";
 import { createBaseApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
@@ -12,7 +12,7 @@ app.get("/api/user", async (c) => {
     const {
         data: { user },
         error: userError,
-    } = await supabase.auth.getUser();
+    } = await getAuthenticatedUser(c);
 
     if (userError || !user) {
         return c.json({ error: "Usuário não autenticado" }, 401);
@@ -36,7 +36,7 @@ app.patch("/api/user", async (c) => {
     const {
         data: { user },
         error: userError,
-    } = await supabase.auth.getUser();
+    } = await getAuthenticatedUser(c);
 
     if (userError || !user) {
         return c.json({ error: "Usuário não autenticado" }, 401);

@@ -1,10 +1,10 @@
 import { Context } from "hono";
-import { getSupabaseClient } from "../config/supabaseClient";
+import { getSupabaseClient, getAuthenticatedUser } from "../config/supabaseClient";
 
 // Validação de usuário autenticado
 export const validateUser = async (c: Context) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   
   if (userError || !user) {
     return { error: "Usuário não autenticado", status: 401 };

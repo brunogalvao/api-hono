@@ -1,4 +1,4 @@
-import { createClientWithAuth } from "../config/supabaseClient";
+import { createClientWithAuth, getAuthenticatedUser } from "../config/supabaseClient";
 import { createBaseApp } from "../config/baseApp";
 import { updateTaskSchema } from "../model/task.schema";
 
@@ -17,7 +17,7 @@ app.put("/api/tasks/:id", async (c) => {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getAuthenticatedUser(c);
 
   if (authError || !user) {
     return c.json({ error: "Usuário não autenticado." }, 401);
@@ -51,7 +51,7 @@ app.delete("/api/tasks/:id", async (c) => {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getAuthenticatedUser(c);
 
   if (authError || !user) {
     return c.json({ error: "Usuário não autenticado." }, 401);

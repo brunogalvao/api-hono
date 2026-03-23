@@ -1,6 +1,6 @@
 import type { Context, Next } from "hono";
 import { createMiddleware } from "hono/factory";
-import { getSupabaseClient } from "./supabaseClient";
+import { getSupabaseClient, getAuthenticatedUser } from "./supabaseClient";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 
@@ -15,7 +15,7 @@ export const authMiddleware = createMiddleware<{ Variables: AuthVariables }>(
     const {
       data: { user },
       error,
-    } = await supabase.auth.getUser();
+    } = await getAuthenticatedUser(c);
 
     if (error || !user) {
       return c.json({ error: "Usuário não autenticado" }, 401);
