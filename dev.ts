@@ -25,7 +25,24 @@ function getSupabaseClient(c: any) {
         Authorization: c.req.header("Authorization") ?? "",
       },
     },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
   });
+}
+
+// Extrai o JWT do header Authorization (remove "Bearer ")
+function extractToken(c: any): string | undefined {
+  const authHeader = c.req.header("Authorization") ?? "";
+  return authHeader.replace("Bearer ", "") || undefined;
+}
+
+// Valida o JWT e retorna o usuário autenticado
+async function getAuthenticatedUser(c: any) {
+  const token = extractToken(c);
+  const supabase = getSupabaseClient(c);
+  return supabase.auth.getUser(token);
 }
 
 function getPublicSupabaseClient() {
@@ -69,7 +86,7 @@ app.get("/api/health", async (c) => {
 // GET /api/tasks
 app.get("/api/tasks", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
   const url = new URL(c.req.url);
@@ -95,7 +112,7 @@ app.get("/api/tasks", async (c) => {
 // POST /api/tasks
 app.post("/api/tasks", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
   const body = await c.req.json();
@@ -119,7 +136,7 @@ app.put("/api/tasks/:id", async (c) => {
   const body = await c.req.json();
   const supabase = getSupabaseClient(c);
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
   if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
   const { data, error } = await supabase
@@ -139,7 +156,7 @@ app.delete("/api/tasks/:id", async (c) => {
   const id = c.req.param("id");
   const supabase = getSupabaseClient(c);
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
   if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
   const { data, error } = await supabase
@@ -157,7 +174,7 @@ app.delete("/api/tasks/:id", async (c) => {
 // GET /api/tasks/total
 app.get("/api/tasks/total", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
   if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
   const { count, error } = await supabase
@@ -172,7 +189,7 @@ app.get("/api/tasks/total", async (c) => {
 // GET /api/tasks/total-price
 app.get("/api/tasks/total-price", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
   if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
   const { data, error } = await supabase
@@ -183,13 +200,13 @@ app.get("/api/tasks/total-price", async (c) => {
   if (error) return c.json({ error: error.message }, 500);
 
   const total = (data || []).reduce((acc, item) => acc + Number(item.price ?? 0), 0);
-  return c.json({ total_price: total });
+  return c.json({ totalPrice: total });
 });
 
 // GET /api/tasks/total-paid
 app.get("/api/tasks/total-paid", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
   if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
   const { data, error } = await supabase
@@ -211,7 +228,7 @@ app.get("/api/tasks/total-paid", async (c) => {
 // GET /api/incomes
 app.get("/api/incomes", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   const { data, error } = await supabase
@@ -226,7 +243,7 @@ app.get("/api/incomes", async (c) => {
 // POST /api/incomes
 app.post("/api/incomes", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   const { descricao, valor, mes, ano } = await c.req.json();
@@ -244,7 +261,7 @@ app.post("/api/incomes", async (c) => {
 // PATCH /api/incomes
 app.patch("/api/incomes", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   const { id, descricao, valor, mes, ano } = await c.req.json();
@@ -267,7 +284,7 @@ app.delete("/api/incomes/:id", async (c) => {
   const id = c.req.param("id");
   const supabase = getSupabaseClient(c);
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
   const { data, error } = await supabase
@@ -285,7 +302,7 @@ app.delete("/api/incomes/:id", async (c) => {
 // GET /api/incomes/total-incomes
 app.get("/api/incomes/total-incomes", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   const { data, error } = await supabase
@@ -302,7 +319,7 @@ app.get("/api/incomes/total-incomes", async (c) => {
 // GET /api/incomes/total-por-mes
 app.get("/api/incomes/total-por-mes", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   const { data, error } = await supabase
@@ -341,7 +358,7 @@ app.get("/api/incomes/total-por-mes", async (c) => {
 // GET /api/expense-types
 app.get("/api/expense-types", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   const { data, error } = await supabase
@@ -357,7 +374,7 @@ app.get("/api/expense-types", async (c) => {
 // POST /api/expense-types
 app.post("/api/expense-types", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   const { nome } = await c.req.json();
@@ -379,7 +396,7 @@ app.post("/api/expense-types", async (c) => {
 // GET /api/user
 app.get("/api/user", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   return c.json({
@@ -396,7 +413,7 @@ app.get("/api/user", async (c) => {
 // PATCH /api/user
 app.patch("/api/user", async (c) => {
   const supabase = getSupabaseClient(c);
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
   if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
   const { email, name, phone, avatar_url } = await c.req.json();
@@ -429,7 +446,7 @@ app.patch("/api/user", async (c) => {
 app.post("/api/ia/analise-investimento", async (c) => {
   try {
     const supabase = getSupabaseClient(c);
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await getAuthenticatedUser(c);
     if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
 
     const requestBody = await c.req.json();
