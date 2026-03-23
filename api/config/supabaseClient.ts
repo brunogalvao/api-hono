@@ -34,12 +34,33 @@ export function getSupabaseClient(c: Context) {
 }
 
 // Valida o JWT do request e retorna o usuário autenticado.
-// Usa auth.getUser(token) explicitamente, pois clientes criados
-// por request não têm sessão interna armazenada.
+// Usa um cliente limpo (sem override de Authorization) para evitar
+// conflito entre o header global do cliente de dados e o token do usuário
+// no auth.getUser() — especialmente no Vercel Edge Runtime.
 export async function getAuthenticatedUser(c: Context) {
   const token = extractToken(c);
-  const supabase = getSupabaseClient(c);
-  return supabase.auth.getUser(token);
+
+  if (!token) {
+    console.warn("[getAuthenticatedUser] Token ausente no header Authorization");
+    return { data: { user: null }, error: { message: "Token não encontrado no header Authorization" } };
+  }
+
+  // Cliente limpo: sem global.headers.Authorization — o SDK usa apenas apikey
+  // e auth.getUser(token) define seu próprio Authorization: Bearer {token}
+  const authClient = createClient(supabaseUrl!, supabaseServiceKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  const result = await authClient.auth.getUser(token);
+
+  if (result.error) {
+    console.error("[getAuthenticatedUser] Supabase auth error:", result.error.message, result.error);
+  }
+
+  return result;
 }
 
 // Cliente para operações públicas (sem autenticação)

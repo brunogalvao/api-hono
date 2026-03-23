@@ -39,10 +39,28 @@ function extractToken(c: any): string | undefined {
 }
 
 // Valida o JWT e retorna o usuário autenticado
+// Usa cliente limpo (sem override de Authorization) para evitar conflito no auth.getUser()
 async function getAuthenticatedUser(c: any) {
   const token = extractToken(c);
-  const supabase = getSupabaseClient(c);
-  return supabase.auth.getUser(token);
+
+  if (!token) {
+    console.warn("[getAuthenticatedUser] Token ausente no header Authorization");
+    return { data: { user: null }, error: { message: "Token não encontrado no header Authorization" } };
+  }
+
+  const authClient = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+
+  const result = await authClient.auth.getUser(token);
+
+  if (result.error) {
+    console.error("[getAuthenticatedUser] Supabase auth error:", result.error.message);
+  }
+
+  return result;
 }
 
 function getPublicSupabaseClient() {
