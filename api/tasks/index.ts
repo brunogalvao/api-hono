@@ -1,21 +1,13 @@
-import { getSupabaseClient, getAuthenticatedUser } from "../config/supabaseClient";
-import { createBaseApp } from "../config/baseApp";
+import { createAuthApp } from "../config/baseApp";
 import { createTaskSchema } from "../model/task.schema";
 
 export const config = { runtime: "edge" };
 
-const app = createBaseApp();
+const app = createAuthApp();
 
-// GET
 app.get("/api/tasks", async (c) => {
-  const supabase = getSupabaseClient(c);
-  const {
-    data: { user },
-    error: userError,
-  } = await getAuthenticatedUser(c);
-
-  if (userError || !user)
-    return c.json({ error: "Usuário não autenticado." }, 401);
+  const supabase = c.get("supabase");
+  const user = c.get("user");
 
   const month = Number(c.req.query("month"));
   const year = Number(c.req.query("year"));
@@ -27,7 +19,8 @@ app.get("/api/tasks", async (c) => {
     return c.json({ error: "Parâmetros 'month' ou 'year' inválidos." }, 400);
   }
 
-  const { data, error } = await supabase
+  // Busca tasks do mês solicitado
+  const { data: monthTasks, error } = await supabase
     .from("tasks")
     .select("*")
     .eq("user_id", user.id)
@@ -36,19 +29,60 @@ app.get("/api/tasks", async (c) => {
     .order("created_at", { ascending: false });
 
   if (error) return c.json({ error: error.message }, 500);
-  return c.json(data);
+
+  // Busca todas as fontes recorrentes do usuário (recorrente = true, sem fixo_source_id = são originais)
+  const { data: recorrenteSources } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("recorrente", true)
+    .is("fixo_source_id", null);
+
+  if (recorrenteSources && recorrenteSources.length > 0) {
+    // IDs de fontes que já têm cópia no mês solicitado
+    const alreadyCopied = new Set(
+      (monthTasks ?? [])
+        .filter((t) => t.fixo_source_id !== null)
+        .map((t) => t.fixo_source_id)
+    );
+
+    // Fontes do próprio mês já estão em monthTasks — não precisam de cópia
+    const toReplicate = recorrenteSources.filter(
+      (src) =>
+        !alreadyCopied.has(src.id) &&
+        !(src.mes === month && src.ano === year)
+    );
+
+    if (toReplicate.length > 0) {
+      const copies = toReplicate.map((src) => ({
+        user_id: user.id,
+        title: src.title,
+        price: src.price,
+        done: "Pendente",
+        type: src.type,
+        mes: month,
+        ano: year,
+        fixo_source_id: src.id,
+        recorrente: false,
+      }));
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("tasks")
+        .insert(copies)
+        .select();
+
+      if (!insertError && inserted) {
+        return c.json([...inserted, ...(monthTasks ?? [])]);
+      }
+    }
+  }
+
+  return c.json(monthTasks);
 });
 
-// POST
 app.post("/api/tasks", async (c) => {
-  const supabase = getSupabaseClient(c);
-  const {
-    data: { user },
-    error: userError,
-  } = await getAuthenticatedUser(c);
-
-  if (userError || !user)
-    return c.json({ error: "Usuário não autenticado." }, 401);
+  const supabase = c.get("supabase");
+  const user = c.get("user");
 
   const body = await c.req.json();
   const parsed = createTaskSchema.safeParse(body);
@@ -63,6 +97,32 @@ app.post("/api/tasks", async (c) => {
     .select();
 
   if (error) return c.json({ error: error.message }, 500);
+
+  // Replicação imediata: cria cópias para todos os outros meses do ano
+  if (parsed.data.recorrente) {
+    const original = data[0];
+    const copies = [];
+
+    for (let m = 1; m <= 12; m++) {
+      if (m === original.mes) continue; // mês original já existe
+      copies.push({
+        user_id: user.id,
+        title: original.title,
+        price: original.price,
+        done: "Pendente",
+        type: original.type,
+        mes: m,
+        ano: original.ano,
+        fixo_source_id: original.id,
+        recorrente: false,
+      });
+    }
+
+    if (copies.length > 0) {
+      await supabase.from("tasks").insert(copies);
+    }
+  }
+
   return c.json(data[0]);
 });
 

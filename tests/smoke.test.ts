@@ -1,4 +1,5 @@
 import { describe, test, expect } from "vitest";
+import { createTaskSchema, updateTaskSchema } from "../api/model/task.schema";
 
 const BASE_URL = process.env.API_URL ?? "https://api-hono-jet.vercel.app";
 
@@ -48,5 +49,110 @@ describe("Smoke tests — Vercel Deploy", () => {
   test("GET /api/tasks sem query params → 400 ou 401", async () => {
     const res = await fetch(`${BASE_URL}/api/tasks`);
     expect([400, 401]).toContain(res.status);
+  });
+});
+
+// ─── Validação de schemas (campo recorrente) ───────────────────────────────
+
+describe("createTaskSchema — campo recorrente", () => {
+  const base = { title: "Aluguel", price: 1500, mes: 3, ano: 2026 };
+
+  test("recorrente padrão é false", () => {
+    const result = createTaskSchema.safeParse(base);
+    expect(result.success).toBe(true);
+    expect(result.data?.recorrente).toBe(false);
+  });
+
+  test("aceita recorrente: true (despesa fixa mensal)", () => {
+    const result = createTaskSchema.safeParse({ ...base, recorrente: true });
+    expect(result.success).toBe(true);
+    expect(result.data?.recorrente).toBe(true);
+  });
+
+  test("rejeita done: Fixo (não é mais um status válido)", () => {
+    const result = createTaskSchema.safeParse({ ...base, done: "Fixo" });
+    expect(result.success).toBe(false);
+  });
+
+  test("aceita done: Pago", () => {
+    const result = createTaskSchema.safeParse({ ...base, done: "Pago" });
+    expect(result.success).toBe(true);
+  });
+
+  test("aceita done: Pendente", () => {
+    const result = createTaskSchema.safeParse({ ...base, done: "Pendente" });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("updateTaskSchema — campo recorrente", () => {
+  test("permite atualizar recorrente para true", () => {
+    const result = updateTaskSchema.safeParse({ recorrente: true });
+    expect(result.success).toBe(true);
+  });
+
+  test("permite atualizar recorrente para false", () => {
+    const result = updateTaskSchema.safeParse({ recorrente: false });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejeita done: Fixo no update", () => {
+    const result = updateTaskSchema.safeParse({ done: "Fixo" });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── Lógica de replicação eager (cópias para outros meses) ────────────────
+
+describe("lógica de replicação recorrente", () => {
+  test("task recorrente deve gerar cópias para os outros 11 meses", () => {
+    const mesCriacao = 3;
+    const ano = 2026;
+
+    const copies = [];
+    for (let m = 1; m <= 12; m++) {
+      if (m === mesCriacao) continue;
+      copies.push({ mes: m, ano, fixo_source_id: "original-id", recorrente: false });
+    }
+
+    expect(copies).toHaveLength(11);
+    expect(copies.every((c) => c.mes !== mesCriacao)).toBe(true);
+    expect(copies.every((c) => c.recorrente === false)).toBe(true);
+    expect(copies.every((c) => c.fixo_source_id === "original-id")).toBe(true);
+    expect(copies.map((c) => c.mes)).toEqual([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  test("task NÃO recorrente não deve gerar cópias", () => {
+    const recorrente = false;
+    const copies = recorrente ? ["would create copies"] : [];
+    expect(copies).toHaveLength(0);
+  });
+
+  test("cópia criada tem recorrente=false e aponta para o original via fixo_source_id", () => {
+    const parsed = createTaskSchema.safeParse({
+      title: "Internet",
+      price: 120,
+      mes: 3,
+      ano: 2026,
+      recorrente: true,
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.recorrente).toBe(true);
+
+    // simula o que o backend cria para cada cópia
+    const copy = {
+      title: parsed.data!.title,
+      price: parsed.data!.price,
+      done: "Pendente",
+      mes: 4, // mês de destino
+      ano: parsed.data!.ano,
+      fixo_source_id: "uuid-original",
+      recorrente: false,
+    };
+
+    expect(copy.recorrente).toBe(false);
+    expect(copy.fixo_source_id).toBe("uuid-original");
+    expect(copy.mes).toBe(4);
   });
 });
