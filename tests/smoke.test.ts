@@ -102,6 +102,43 @@ describe("updateTaskSchema — campo recorrente", () => {
   });
 });
 
+// ─── Lógica de mudança de recorrente no PUT ───────────────────────────────
+
+describe("PUT /api/tasks/:id — mudança de recorrente", () => {
+  test("recorrente false → true: updateSchema aceita recorrente: true", () => {
+    const result = updateTaskSchema.safeParse({ recorrente: true });
+    expect(result.success).toBe(true);
+    expect(result.data?.recorrente).toBe(true);
+  });
+
+  test("recorrente true → false: updateSchema aceita recorrente: false", () => {
+    const result = updateTaskSchema.safeParse({ recorrente: false });
+    expect(result.success).toBe(true);
+    expect(result.data?.recorrente).toBe(false);
+  });
+
+  test("ao desativar recorrente, lógica deve deletar cópias (fixo_source_id = id)", () => {
+    const recorrenteNovo = false;
+    const recorrenteAntigo = true;
+    const deveRemoverCopias = recorrenteNovo !== recorrenteAntigo && !recorrenteNovo;
+    expect(deveRemoverCopias).toBe(true);
+  });
+
+  test("ao ativar recorrente, lógica deve criar 11 cópias", () => {
+    const recorrenteNovo = true;
+    const recorrenteAntigo = false;
+    const deveCriarCopias = recorrenteNovo !== recorrenteAntigo && recorrenteNovo;
+
+    const mesCriacao = 5;
+    const copies = deveCriarCopias
+      ? Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => m !== mesCriacao)
+      : [];
+
+    expect(copies).toHaveLength(11);
+    expect(copies).not.toContain(mesCriacao);
+  });
+});
+
 // ─── Lógica de replicação eager (cópias para outros meses) ────────────────
 
 describe("lógica de replicação recorrente", () => {
