@@ -1,24 +1,12 @@
-import { createClientWithAuth, getAuthenticatedUser } from "../config/supabaseClient";
-import { createBaseApp } from "../config/baseApp";
+import { createAuthApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = createBaseApp();
+const app = createAuthApp();
 
-const path = "/api/incomes/total-incomes";
-
-app.get(path, async (c) => {
-  const token = c.req.header("Authorization") ?? "";
-  if (!token) return c.json({ error: "Token ausente" }, 401);
-
-  const supabase = createClientWithAuth(token);
-
-  const {
-    data: { user },
-    error: userError,
-  } = await getAuthenticatedUser(c);
-
-  if (userError || !user) return c.json({ error: "Usuário inválido" }, 401);
+app.get("/api/incomes/total-incomes", async (c) => {
+  const supabase = c.get("supabase");
+  const user = c.get("user");
 
   const { data, error } = await supabase
     .from("incomes")
@@ -27,7 +15,10 @@ app.get(path, async (c) => {
 
   if (error) return c.json({ error: error.message }, 500);
 
-  const total = data?.reduce((acc, item) => acc + (item.valor ?? 0), 0) ?? 0;
+  const total = (data ?? []).reduce(
+    (acc, item: { valor?: number | null }) => acc + (item.valor ?? 0),
+    0,
+  );
 
   return c.json({ total_incomes: total });
 });

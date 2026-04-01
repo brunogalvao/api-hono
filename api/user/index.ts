@@ -1,81 +1,47 @@
-import { getSupabaseClient, getAuthenticatedUser } from "../config/supabaseClient";
-import { createBaseApp } from "../config/baseApp";
+import { createAuthApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = createBaseApp();
+const app = createAuthApp();
 
-// ✅ GET - obter perfil do usuário
 app.get("/api/user", async (c) => {
-    const supabase = getSupabaseClient(c);
+  const user = c.get("user");
 
-    const {
-        data: { user },
-        error: userError,
-    } = await getAuthenticatedUser(c);
-
-    if (userError || !user) {
-        return c.json({ error: "Usuário não autenticado" }, 401);
-    }
-
-    return c.json({
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata?.name || "",
-        phone: user.user_metadata?.phone || "",
-        avatar_url: user.user_metadata?.avatar_url || "",
-        created_at: user.created_at,
-        updated_at: user.updated_at,
-    });
+  return c.json({
+    id: user.id,
+    email: user.email,
+    name: user.user_metadata?.name || "",
+    phone: user.user_metadata?.phone || "",
+    avatar_url: user.user_metadata?.avatar_url || "",
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+  });
 });
 
-// ✅ PATCH - atualizar perfil do usuário
 app.patch("/api/user", async (c) => {
-    const supabase = getSupabaseClient(c);
+  const supabase = c.get("supabase");
 
-    const {
-        data: { user },
-        error: userError,
-    } = await getAuthenticatedUser(c);
+  const { email, name, phone, avatar_url } = await c.req.json();
 
-    if (userError || !user) {
-        return c.json({ error: "Usuário não autenticado" }, 401);
-    }
+  const { data, error } = await supabase.auth.updateUser({
+    email,
+    phone,
+    data: { name, phone, avatar_url },
+  });
 
-    const { email, name, phone, avatar_url } = await c.req.json();
+  if (error) return c.json({ error: error.message }, 400);
 
-    try {
-        const { data, error } = await supabase.auth.updateUser({
-            email,
-            phone,
-            data: {
-                name,
-                phone,
-                avatar_url,
-            },
-        });
-
-        if (error) {
-            return c.json({ error: error.message }, 400);
-        }
-
-        return c.json({
-            success: true,
-            user: {
-                id: data.user?.id,
-                email: data.user?.email,
-                name: data.user?.user_metadata?.name || "",
-                phone: data.user?.user_metadata?.phone || "",
-                avatar_url: data.user?.user_metadata?.avatar_url || "",
-                updated_at: data.user?.updated_at,
-            },
-        });
-    } catch (error: any) {
-        return c.json(
-            { error: error.message || "Erro interno do servidor" },
-            500,
-        );
-    }
+  return c.json({
+    success: true,
+    user: {
+      id: data.user?.id,
+      email: data.user?.email,
+      name: data.user?.user_metadata?.name || "",
+      phone: data.user?.user_metadata?.phone || "",
+      avatar_url: data.user?.user_metadata?.avatar_url || "",
+      updated_at: data.user?.updated_at,
+    },
+  });
 });
 
 export const GET = app.fetch;

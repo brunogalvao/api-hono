@@ -1,23 +1,12 @@
-import { createClientWithAuth, getAuthenticatedUser } from "../config/supabaseClient";
-import { createBaseApp } from "../config/baseApp";
+import { createAuthApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = createBaseApp();
+const app = createAuthApp();
 
-// GET /api/tasks/total-price – soma apenas tarefas do usuário autenticado
 app.get("/api/tasks/total-price", async (c) => {
-  const token = c.req.header("Authorization");
-  const supabase = createClientWithAuth(token);
-
-  const {
-    data: { user },
-    error: authError,
-  } = await getAuthenticatedUser(c);
-
-  if (authError || !user) {
-    return c.json({ error: "Usuário não autenticado." }, 401);
-  }
+  const supabase = c.get("supabase");
+  const user = c.get("user");
 
   const { data, error } = await supabase
     .from("tasks")
@@ -26,8 +15,10 @@ app.get("/api/tasks/total-price", async (c) => {
 
   if (error) return c.json({ error: error.message }, 500);
 
-  const total =
-    data?.reduce((sum: number, item: any) => sum + (item.price || 0), 0) ?? 0;
+  const total = (data ?? []).reduce(
+    (sum: number, item: { price?: number | null }) => sum + (item.price || 0),
+    0,
+  );
 
   return c.json({ totalPrice: total });
 });

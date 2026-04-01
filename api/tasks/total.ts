@@ -1,23 +1,12 @@
-import { createClientWithAuth, getAuthenticatedUser } from "../config/supabaseClient";
-import { createBaseApp } from "../config/baseApp";
+import { createAuthApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = createBaseApp();
+const app = createAuthApp();
 
-// GET /api/tasks/total – conta apenas tarefas do usuário logado
 app.get("/api/tasks/total", async (c) => {
-  const token = c.req.header("Authorization");
-  const supabase = createClientWithAuth(token);
-
-  const {
-    data: { user },
-    error: authError,
-  } = await getAuthenticatedUser(c);
-
-  if (authError || !user) {
-    return c.json({ error: "Usuário não autenticado." }, 401);
-  }
+  const supabase = c.get("supabase");
+  const user = c.get("user");
 
   const { count, error } = await supabase
     .from("tasks")

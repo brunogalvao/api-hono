@@ -3,7 +3,7 @@ import { z } from "zod";
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   price: z.number().nonnegative("Preço deve ser positivo").optional(),
-  done: z.enum(["Pago", "Pendente"]).optional(),
+  done: z.enum(["Pago", "Pendente", "Fixo"]).optional(),
   type: z.string().optional(),
   mes: z
     .number()
@@ -17,7 +17,8 @@ export const createTaskSchema = z.object({
 export const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
   price: z.number().nonnegative().optional(),
-  done: z.enum(["Pago", "Pendente"]).optional(),
+  done: z.enum(["Pago", "Pendente", "Fixo"]).optional(),
+  type: z.string().optional(),
   mes: z.number().int().min(1).max(12).optional(),
   ano: z.number().int().min(2000).optional(),
   recorrente: z.boolean().optional(),

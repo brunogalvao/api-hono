@@ -1,28 +1,15 @@
-import { createClientWithAuth, getAuthenticatedUser } from "../config/supabaseClient";
-import { createBaseApp } from "../config/baseApp";
+import { createAuthApp } from "../config/baseApp";
 
 export const config = { runtime: "edge" };
 
-const app = createBaseApp();
+const app = createAuthApp();
 
-// DELETE - ROTA: /api/incomes/:id
 app.delete("/api/incomes/:id", async (c) => {
-  const token = c.req.header("Authorization") ?? "";
-  if (!token) return c.json({ error: "Token ausente" }, 401);
-
   const id = c.req.param("id");
   if (!id) return c.json({ error: "ID do rendimento ausente" }, 400);
 
-  const supabase = createClientWithAuth(token);
-
-  const {
-    data: { user },
-    error: userError,
-  } = await getAuthenticatedUser(c);
-
-  if (userError || !user) {
-    return c.json({ error: "Usuário não autenticado." }, 401);
-  }
+  const supabase = c.get("supabase");
+  const user = c.get("user");
 
   const { data, error } = await supabase
     .from("incomes")

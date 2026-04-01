@@ -5,6 +5,9 @@ export type Task = {
   done: TaskStatus;
   created_at?: string;
   type?: string;
+  mes: number;
+  ano: number;
+  fixo_source_id?: string | null;
 };
 
 export type TaskTable = {

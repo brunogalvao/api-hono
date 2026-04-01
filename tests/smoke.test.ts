@@ -69,9 +69,9 @@ describe("createTaskSchema — campo recorrente", () => {
     expect(result.data?.recorrente).toBe(true);
   });
 
-  test("rejeita done: Fixo (não é mais um status válido)", () => {
+  test("aceita done: Fixo (status de despesa recorrente)", () => {
     const result = createTaskSchema.safeParse({ ...base, done: "Fixo" });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   test("aceita done: Pago", () => {
@@ -96,9 +96,9 @@ describe("updateTaskSchema — campo recorrente", () => {
     expect(result.success).toBe(true);
   });
 
-  test("rejeita done: Fixo no update", () => {
+  test("aceita done: Fixo no update (status de despesa recorrente)", () => {
     const result = updateTaskSchema.safeParse({ done: "Fixo" });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });
 

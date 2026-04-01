@@ -1,10 +1,9 @@
-import type { Context, Next } from "hono";
 import { createMiddleware } from "hono/factory";
 import { getSupabaseClient, getAuthenticatedUser } from "./supabaseClient";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 
-type AuthVariables = {
+export type AuthVariables = {
   user: User;
   supabase: SupabaseClient;
 };

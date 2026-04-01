@@ -1,12 +1,11 @@
-import { getSupabaseClient, getAuthenticatedUser } from "../config/supabaseClient";
-import { createBaseApp } from "../config/baseApp";
+import { createAuthApp } from "../config/baseApp";
 import { getDolarRate } from "../utils/currency";
 import type { MonthlyTotal } from "../model/monthly-total.model";
 import OpenAI from "openai";
 
 export const config = { runtime: "edge" };
 
-const app = createBaseApp();
+const app = createAuthApp();
 
 // Validar e inicializar OpenAI
 const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -24,17 +23,8 @@ app.get("/", (c) => {
 // POST para análise de investimentos
 app.post("/", async (c) => {
   try {
-    const supabase = getSupabaseClient(c);
-
-    // Verificar autenticação
-    const {
-      data: { user },
-      error: userError,
-    } = await getAuthenticatedUser(c);
-
-    if (userError || !user) {
-      return c.json({ error: "Usuário não autenticado" }, 401);
-    }
+    const supabase = c.get("supabase");
+    const user = c.get("user");
 
     // Buscar rendimentos do usuário
     const { data: incomes, error: incomesError } = await supabase
