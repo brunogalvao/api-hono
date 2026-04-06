@@ -30,53 +30,6 @@ app.get("/api/tasks", async (c) => {
 
   if (error) return c.json({ error: error.message }, 500);
 
-  // Busca todas as fontes recorrentes do usuário (recorrente = true, sem fixo_source_id = são originais)
-  const { data: recorrenteSources } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("recorrente", true)
-    .is("fixo_source_id", null);
-
-  if (recorrenteSources && recorrenteSources.length > 0) {
-    // IDs de fontes que já têm cópia no mês solicitado
-    const alreadyCopied = new Set(
-      (monthTasks ?? [])
-        .filter((t) => t.fixo_source_id !== null)
-        .map((t) => t.fixo_source_id)
-    );
-
-    // Fontes do próprio mês já estão em monthTasks — não precisam de cópia
-    const toReplicate = recorrenteSources.filter(
-      (src) =>
-        !alreadyCopied.has(src.id) &&
-        !(src.mes === month && src.ano === year)
-    );
-
-    if (toReplicate.length > 0) {
-      const copies = toReplicate.map((src) => ({
-        user_id: user.id,
-        title: src.title,
-        price: src.price,
-        done: "Pendente",
-        type: src.type,
-        mes: month,
-        ano: year,
-        fixo_source_id: src.id,
-        recorrente: false,
-      }));
-
-      const { data: inserted, error: insertError } = await supabase
-        .from("tasks")
-        .insert(copies)
-        .select();
-
-      if (!insertError && inserted) {
-        return c.json([...inserted, ...(monthTasks ?? [])]);
-      }
-    }
-  }
-
   return c.json(monthTasks);
 });
 
@@ -121,6 +74,66 @@ app.post("/api/tasks", async (c) => {
     if (copies.length > 0) {
       await supabase.from("tasks").insert(copies);
     }
+  }
+
+  // Compra parcelada: cria N-1 cópias mensais
+  if (parsed.data.parcela_total && parsed.data.parcela_total >= 2) {
+    const original = data[0];
+    const parcelaTotal = parsed.data.parcela_total;
+    const parcela_group_id = crypto.randomUUID();
+
+    // Atualiza a task original com parcela_numero: 1 e parcela_group_id
+    await supabase
+      .from("tasks")
+      .update({ parcela_numero: 1, parcela_group_id, parcela_total: parcelaTotal })
+      .eq("id", original.id)
+      .eq("user_id", user.id);
+
+    const basePrice = original.price ?? 0;
+    const parcelaBase = Math.floor((basePrice / parcelaTotal) * 100) / 100;
+    const totalBase = parcelaBase * (parcelaTotal - 1);
+    const parcelaFinal = Math.round((basePrice - totalBase) * 100) / 100;
+
+    function nextMonth(mes: number, ano: number, offset: number) {
+      const totalMonth = mes - 1 + offset; // 0-based
+      return {
+        mes: (totalMonth % 12) + 1,
+        ano: ano + Math.floor(totalMonth / 12),
+      };
+    }
+
+    const copies = [];
+    for (let i = 2; i <= parcelaTotal; i++) {
+      const { mes, ano } = nextMonth(original.mes, original.ano, i - 1);
+      const price = i === parcelaTotal ? parcelaFinal : parcelaBase;
+      copies.push({
+        user_id: user.id,
+        title: original.title,
+        price,
+        done: "Pendente",
+        type: original.type,
+        mes,
+        ano,
+        recorrente: false,
+        fixo_source_id: null,
+        parcela_numero: i,
+        parcela_total: parcelaTotal,
+        parcela_group_id,
+      });
+    }
+
+    if (copies.length > 0) {
+      await supabase.from("tasks").insert(copies);
+    }
+
+    // Retorna a task atualizada com os campos de parcela
+    const { data: updatedOriginal } = await supabase
+      .from("tasks")
+      .select()
+      .eq("id", original.id)
+      .single();
+
+    return c.json(updatedOriginal ?? original);
   }
 
   return c.json(data[0]);

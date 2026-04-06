@@ -8,6 +8,9 @@ export type Task = {
   mes: number;
   ano: number;
   fixo_source_id?: string | null;
+  parcela_numero?: number | null;
+  parcela_total?: number | null;
+  parcela_group_id?: string | null;
 };
 
 export type TaskTable = {

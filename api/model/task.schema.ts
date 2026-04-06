@@ -12,6 +12,7 @@ export const createTaskSchema = z.object({
     .max(12, "Mês deve ser entre 1 e 12"),
   ano: z.number().int().min(2000, "Ano deve ser maior que 2000"),
   recorrente: z.boolean().default(false),
+  parcela_total: z.number().int().min(2).max(360).optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -22,6 +23,10 @@ export const updateTaskSchema = z.object({
   mes: z.number().int().min(1).max(12).optional(),
   ano: z.number().int().min(2000).optional(),
   recorrente: z.boolean().optional(),
+  fixo_source_id: z.string().nullable().optional(),
+  parcela_total: z.number().int().min(2).max(360).optional(),
+  parcela_numero: z.number().int().min(1).optional(),
+  parcela_group_id: z.string().nullable().optional(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

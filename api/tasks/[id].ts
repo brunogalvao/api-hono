@@ -79,6 +79,27 @@ app.delete("/api/tasks/:id", async (c) => {
   const id = c.req.param("id");
   const supabase = c.get("supabase");
   const user = c.get("user");
+  const cancelAll = c.req.query("cancel_all") === "true";
+
+  // Busca a task antes de deletar para verificar se é original recorrente ou parcelada
+  const { data: target } = await supabase
+    .from("tasks")
+    .select("recorrente, fixo_source_id, parcela_group_id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  // Se cancel_all=true e a task tem parcela_group_id, deleta todas as parcelas do grupo
+  if (cancelAll && target?.parcela_group_id) {
+    const { error } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("parcela_group_id", target.parcela_group_id)
+      .eq("user_id", user.id);
+
+    if (error) return c.json({ error: error.message }, 500);
+    return c.json({ message: "Todas as parcelas foram deletadas com sucesso." });
+  }
 
   const { data, error } = await supabase
     .from("tasks")
@@ -90,6 +111,15 @@ app.delete("/api/tasks/:id", async (c) => {
   if (error) return c.json({ error: error.message }, 500);
   if (!data.length)
     return c.json({ error: "Tarefa não encontrada ou acesso negado." }, 404);
+
+  // Se era uma task original recorrente, deleta todas as cópias em cascata
+  if (target?.recorrente && !target?.fixo_source_id) {
+    await supabase
+      .from("tasks")
+      .delete()
+      .eq("fixo_source_id", id)
+      .eq("user_id", user.id);
+  }
 
   return c.json({ message: "Tarefa deletada com sucesso." });
 });
