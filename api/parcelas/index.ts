@@ -29,10 +29,10 @@ app.get("/api/parcelas", async (c) => {
       (a, b) => (a.parcela_numero ?? 0) - (b.parcela_numero ?? 0)
     );
     const first = sorted[0];
-    const valor_total = tasks.reduce((sum, t) => sum + (t.price ?? 0), 0);
     const parcela_total = first.parcela_total ?? tasks.length;
-    const parcelas_pagas = tasks.filter((t) => t.done === "Pago").length;
     const valor_parcela = first.price ?? 0;
+    const valor_total = Math.round(valor_parcela * parcela_total * 100) / 100;
+    const parcelas_pagas = tasks.filter((t) => t.done === "Pago").length;
     const status: "Ativo" | "Quitada" =
       parcelas_pagas === tasks.length ? "Quitada" : "Ativo";
 

@@ -83,11 +83,13 @@ app.post("/api/tasks", async (c) => {
     const parcela_group_id = crypto.randomUUID();
 
     // Atualiza a task original com parcela_numero: 1 e parcela_group_id
-    await supabase
+    const { error: updateError } = await supabase
       .from("tasks")
       .update({ parcela_numero: 1, parcela_group_id, parcela_total: parcelaTotal })
       .eq("id", original.id)
       .eq("user_id", user.id);
+
+    if (updateError) return c.json({ error: updateError.message }, 500);
 
     const basePrice = original.price ?? 0;
     const parcelaBase = Math.floor((basePrice / parcelaTotal) * 100) / 100;
@@ -123,7 +125,8 @@ app.post("/api/tasks", async (c) => {
     }
 
     if (copies.length > 0) {
-      await supabase.from("tasks").insert(copies);
+      const { error: copiesError } = await supabase.from("tasks").insert(copies);
+      if (copiesError) return c.json({ error: copiesError.message }, 500);
     }
 
     // Retorna a task atualizada com os campos de parcela

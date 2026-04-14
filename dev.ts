@@ -139,12 +139,89 @@ app.post("/api/tasks", async (c) => {
     return c.json({ error: "Campos 'mes' e 'ano' inválidos." }, 400);
   }
 
+  const { parcela_total, ...taskBody } = body;
+
   const { data, error } = await supabase
     .from("tasks")
-    .insert([{ ...body, user_id: user.id }])
+    .insert([{ ...taskBody, user_id: user.id }])
     .select();
 
   if (error) return c.json({ error: error.message }, 500);
+
+  // Replicação recorrente
+  if (taskBody.recorrente) {
+    const original = data[0];
+    const copies = [];
+    for (let m = 1; m <= 12; m++) {
+      if (m === original.mes) continue;
+      copies.push({
+        user_id: user.id,
+        title: original.title,
+        price: original.price,
+        done: "Pendente",
+        type: original.type,
+        mes: m,
+        ano: original.ano,
+        fixo_source_id: original.id,
+        recorrente: false,
+      });
+    }
+    if (copies.length > 0) await supabase.from("tasks").insert(copies);
+  }
+
+  // Compra parcelada
+  if (parcela_total && parcela_total >= 2) {
+    const original = data[0];
+    const parcela_group_id = crypto.randomUUID();
+
+    const { error: updateError } = await supabase
+      .from("tasks")
+      .update({ parcela_numero: 1, parcela_group_id, parcela_total })
+      .eq("id", original.id)
+      .eq("user_id", user.id);
+
+    if (updateError) return c.json({ error: updateError.message }, 500);
+
+    const basePrice = original.price ?? 0;
+    const parcelaBase = Math.floor((basePrice / parcela_total) * 100) / 100;
+    const totalBase = parcelaBase * (parcela_total - 1);
+    const parcelaFinal = Math.round((basePrice - totalBase) * 100) / 100;
+
+    function nextMonth(mes: number, ano: number, offset: number) {
+      const totalMonth = mes - 1 + offset;
+      return { mes: (totalMonth % 12) + 1, ano: ano + Math.floor(totalMonth / 12) };
+    }
+
+    const copies = [];
+    for (let i = 2; i <= parcela_total; i++) {
+      const { mes, ano } = nextMonth(original.mes, original.ano, i - 1);
+      const price = i === parcela_total ? parcelaFinal : parcelaBase;
+      copies.push({
+        user_id: user.id,
+        title: original.title,
+        price,
+        done: "Pendente",
+        type: original.type,
+        mes,
+        ano,
+        recorrente: false,
+        fixo_source_id: null,
+        parcela_numero: i,
+        parcela_total,
+        parcela_group_id,
+      });
+    }
+
+    if (copies.length > 0) {
+      const { error: copiesError } = await supabase.from("tasks").insert(copies);
+      if (copiesError) return c.json({ error: copiesError.message }, 500);
+    }
+
+    const { data: updated } = await supabase
+      .from("tasks").select().eq("id", original.id).single();
+    return c.json(updated ?? original);
+  }
+
   return c.json(data[0]);
 });
 
@@ -173,16 +250,27 @@ app.put("/api/tasks/:id", async (c) => {
 app.delete("/api/tasks/:id", async (c) => {
   const id = c.req.param("id");
   const supabase = getSupabaseClient(c);
+  const cancelAll = c.req.query("cancel_all") === "true";
 
   const { data: { user }, error: authError } = await getAuthenticatedUser(c);
   if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
+  if (cancelAll) {
+    const { data: target } = await supabase
+      .from("tasks").select("parcela_group_id").eq("id", id).eq("user_id", user.id).single();
+
+    if (target?.parcela_group_id) {
+      const { error } = await supabase
+        .from("tasks").delete()
+        .eq("parcela_group_id", target.parcela_group_id)
+        .eq("user_id", user.id);
+      if (error) return c.json({ error: error.message }, 500);
+      return c.json({ message: "Todas as parcelas foram deletadas com sucesso." });
+    }
+  }
+
   const { data, error } = await supabase
-    .from("tasks")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .select();
+    .from("tasks").delete().eq("id", id).eq("user_id", user.id).select();
 
   if (error) return c.json({ error: error.message }, 500);
   if (!data.length) return c.json({ error: "Tarefa não encontrada." }, 404);
@@ -531,6 +619,57 @@ app.post("/api/ia/analise-investimento", async (c) => {
   } catch (error: any) {
     return c.json({ error: "Erro interno", details: error.message }, 500);
   }
+});
+
+// ══════════════════════════════════════════════════════════
+// PARCELAS
+// ══════════════════════════════════════════════════════════
+
+// GET /api/parcelas
+app.get("/api/parcelas", async (c) => {
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: userError } = await getAuthenticatedUser(c);
+  if (userError || !user) return c.json({ error: "Usuário não autenticado" }, 401);
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("user_id", user.id)
+    .not("parcela_group_id", "is", null);
+
+  if (error) return c.json({ error: error.message }, 500);
+
+  const groups: Record<string, typeof data> = {};
+  for (const task of data ?? []) {
+    const gid = task.parcela_group_id as string;
+    if (!groups[gid]) groups[gid] = [];
+    groups[gid].push(task);
+  }
+
+  const result = Object.entries(groups).map(([parcela_group_id, tasks]) => {
+    const sorted = [...tasks].sort((a, b) => (a.parcela_numero ?? 0) - (b.parcela_numero ?? 0));
+    const first = sorted[0];
+    const parcela_total = first.parcela_total ?? tasks.length;
+    const valor_parcela = first.price ?? 0;
+    const valor_total = Math.round(valor_parcela * parcela_total * 100) / 100;
+    const parcelas_pagas = tasks.filter((t) => t.done === "Pago").length;
+    const status: "Ativo" | "Quitada" = parcelas_pagas === tasks.length ? "Quitada" : "Ativo";
+
+    return {
+      parcela_group_id,
+      title: first.title,
+      valor_total,
+      parcela_total,
+      parcelas_pagas,
+      valor_parcela,
+      status,
+      mes_inicio: first.mes,
+      ano_inicio: first.ano,
+      type: first.type,
+    };
+  });
+
+  return c.json(result);
 });
 
 // ══════════════════════════════════════════════════════════

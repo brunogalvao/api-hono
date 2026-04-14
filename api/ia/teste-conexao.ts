@@ -24,7 +24,7 @@ const diagnosticarGemini = async () => {
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.0-flash",
             generationConfig: {
                 temperature: 0.3,
                 maxOutputTokens: 500,
@@ -55,7 +55,7 @@ const diagnosticarGemini = async () => {
                 return {
                     status: "success",
                     provider: "Google Gemini",
-                    model: "gemini-1.5-flash",
+                    model: "gemini-2.0-flash",
                     responseTime: `${responseTime}ms`,
                     response: parsedResult,
                     rawResponse: aiResponse.substring(0, 200) + "..."
