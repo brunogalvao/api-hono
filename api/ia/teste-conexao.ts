@@ -20,8 +20,6 @@ const diagnosticarGemini = async () => {
     }
 
     try {
-        console.log("🤖 Testando conexão com Google Gemini...");
-
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
@@ -125,8 +123,6 @@ const diagnosticarOpenAI = async () => {
     }
 
     try {
-        console.log("🤖 Testando conexão com OpenAI...");
-
         const openai = new OpenAI({ apiKey });
 
         const promptTeste = `Responda APENAS com este JSON: {"status": "success", "message": "OpenAI funcionando", "timestamp": "${new Date().toISOString()}"}`;
@@ -209,8 +205,6 @@ const diagnosticarOpenAI = async () => {
 // Função para testar análise local
 const diagnosticarAnaliseLocal = () => {
     try {
-        console.log("🧠 Testando análise local...");
-
         const startTime = Date.now();
 
         // Simulação de análise local
@@ -260,8 +254,6 @@ const diagnosticarAnaliseLocal = () => {
 // Endpoint principal de diagnóstico
 app.get("/api/ia/teste-conexao", async (c) => {
     try {
-        console.log("🔍 Iniciando diagnóstico completo das APIs de IA...");
-
         const startTime = Date.now();
 
         // Testar todas as APIs em paralelo
