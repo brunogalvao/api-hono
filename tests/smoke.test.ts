@@ -72,6 +72,46 @@ describe("Smoke tests — Vercel Deploy", () => {
     expect(json).toHaveProperty("error");
   });
 
+  test("POST /api/groups/:id/invite sem auth → 401", async () => {
+    const fakeId = "00000000-0000-0000-0000-000000000000";
+    const res = await fetch(`${BASE_URL}/api/groups/${fakeId}/invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "test@example.com" }),
+    });
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toHaveProperty("error");
+  });
+
+  test("GET /api/invite/:token com token inválido → 404", async () => {
+    const fakeToken = "00000000-0000-0000-0000-000000000000";
+    const res = await fetch(`${BASE_URL}/api/invite/${fakeToken}`);
+    expect(res.status).toBe(404);
+    const json = await res.json();
+    expect(json).toHaveProperty("error");
+  });
+
+  test("POST /api/invite/:token/accept sem auth → 401", async () => {
+    const fakeToken = "00000000-0000-0000-0000-000000000000";
+    const res = await fetch(`${BASE_URL}/api/invite/${fakeToken}/accept`, {
+      method: "POST",
+    });
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toHaveProperty("error");
+  });
+
+  test("DELETE /api/groups/:id/members/:userId sem auth → 401", async () => {
+    const fakeId = "00000000-0000-0000-0000-000000000000";
+    const res = await fetch(`${BASE_URL}/api/groups/${fakeId}/members/${fakeId}`, {
+      method: "DELETE",
+    });
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toHaveProperty("error");
+  });
+
   // ─── Validação de parâmetros ───────────────────────────────────────────────
 
   test("GET /api/tasks sem query params → 400 ou 401", async () => {
