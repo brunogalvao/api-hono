@@ -44,6 +44,34 @@ describe("Smoke tests — Vercel Deploy", () => {
     expect(json).toHaveProperty("error");
   });
 
+  // ─── Grupos (Fase 1 multi-user) ───────────────────────────────────────────
+
+  test("GET /api/groups sem auth → 401", async () => {
+    const res = await fetch(`${BASE_URL}/api/groups`);
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toHaveProperty("error");
+  });
+
+  test("POST /api/groups sem auth → 401", async () => {
+    const res = await fetch(`${BASE_URL}/api/groups`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Teste", type: "shared" }),
+    });
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toHaveProperty("error");
+  });
+
+  test("GET /api/groups/:id/members sem auth → 401", async () => {
+    const fakeId = "00000000-0000-0000-0000-000000000000";
+    const res = await fetch(`${BASE_URL}/api/groups/${fakeId}/members`);
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toHaveProperty("error");
+  });
+
   // ─── Validação de parâmetros ───────────────────────────────────────────────
 
   test("GET /api/tasks sem query params → 400 ou 401", async () => {

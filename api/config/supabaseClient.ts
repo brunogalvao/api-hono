@@ -3,11 +3,12 @@ import type { Context } from "hono";
 
 // Validação das variáveis de ambiente no nível do módulo
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+// service role mantida apenas para validação de JWT em getAuthenticatedUser
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios");
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("SUPABASE_URL e SUPABASE_ANON_KEY são obrigatórios");
 }
 
 // Extrai o token JWT do header Authorization
@@ -16,11 +17,13 @@ export function extractToken(c: Context): string | undefined {
   return authHeader.replace("Bearer ", "") || undefined;
 }
 
-// Cliente para operações que precisam de autenticação (via header Authorization)
+// Cliente para operações autenticadas: usa anon key + JWT do usuário no header.
+// Com esta combinação, PostgREST define auth.uid() corretamente e o RLS é aplicado
+// com o role 'authenticated' — nenhum bypass de segurança.
 export function getSupabaseClient(c: Context) {
   const authHeader = c.req.header("Authorization") ?? "";
 
-  return createClient(supabaseUrl!, supabaseServiceKey!, {
+  return createClient(supabaseUrl!, supabaseAnonKey!, {
     global: {
       headers: {
         Authorization: authHeader,
