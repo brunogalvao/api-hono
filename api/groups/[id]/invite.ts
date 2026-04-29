@@ -8,7 +8,9 @@ export const config = { runtime: "edge" };
 const app = createAuthApp();
 
 const inviteSchema = z.object({
+  name:  z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("E-mail inválido"),
+  phone: z.string().optional(),
 });
 
 // POST /api/groups/:id/invite — owner envia convite por e-mail
@@ -54,7 +56,13 @@ app.post("/api/groups/:id/invite", async (c) => {
 
   const { data: invite, error: inviteError } = await serviceClient
     .from("invites")
-    .insert([{ group_id: groupId, email: parsed.data.email, invited_by: user.id }])
+    .insert([{
+      group_id:   groupId,
+      email:      parsed.data.email,
+      name:       parsed.data.name,
+      phone:      parsed.data.phone ?? null,
+      invited_by: user.id,
+    }])
     .select()
     .single();
 
@@ -76,6 +84,9 @@ app.post("/api/groups/:id/invite", async (c) => {
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #fff; border-radius: 12px;">
           <h2 style="color: #111; margin-bottom: 8px;">Convite para o Finance</h2>
+          <p style="color: #555; font-size: 15px;">
+            Olá, <strong>${parsed.data.name}</strong>!
+          </p>
           <p style="color: #555; font-size: 15px;">
             <strong>${inviterName}</strong> convidou você para colaborar no grupo
             <strong>"${group.name}"</strong>.
