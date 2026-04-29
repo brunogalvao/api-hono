@@ -12,7 +12,8 @@ app.get("/api/parcelas", async (c) => {
     .from("tasks")
     .select("*")
     .eq("user_id", user.id)
-    .not("parcela_group_id", "is", null);
+    .not("parcela_group_id", "is", null)
+    .is("deleted_at", null);
 
   if (error) return c.json({ error: error.message }, 500);
 

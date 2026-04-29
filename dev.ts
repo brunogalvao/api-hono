@@ -234,6 +234,16 @@ app.put("/api/tasks/:id", async (c) => {
   const { data: { user }, error: authError } = await getAuthenticatedUser(c);
   if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
 
+  // Busca estado atual para detectar mudança de recorrente
+  const { data: current } = await supabase
+    .from("tasks")
+    .select("recorrente, mes, ano, title, price, type")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!current) return c.json({ error: "Tarefa não encontrada." }, 404);
+
   const { data, error } = await supabase
     .from("tasks")
     .update(body)
@@ -243,7 +253,44 @@ app.put("/api/tasks/:id", async (c) => {
 
   if (error) return c.json({ error: error.message }, 500);
   if (!data.length) return c.json({ error: "Tarefa não encontrada." }, 404);
-  return c.json(data[0]);
+
+  const updated = data[0];
+
+  // Trata mudança de recorrente
+  if (body.recorrente !== undefined && body.recorrente !== current.recorrente) {
+    if (!body.recorrente) {
+      // recorrente true → false: remove todas as cópias
+      await supabase
+        .from("tasks")
+        .delete()
+        .eq("fixo_source_id", id)
+        .eq("user_id", user.id);
+    } else {
+      // recorrente false → true: cria cópias para os outros 11 meses
+      const mes = updated.mes;
+      const ano = updated.ano;
+      const copies = [];
+      for (let m = 1; m <= 12; m++) {
+        if (m === mes) continue;
+        copies.push({
+          user_id: user.id,
+          title: updated.title,
+          price: updated.price,
+          done: "Pendente",
+          type: updated.type,
+          mes: m,
+          ano,
+          fixo_source_id: updated.id,
+          recorrente: false,
+        });
+      }
+      if (copies.length > 0) {
+        await supabase.from("tasks").insert(copies);
+      }
+    }
+  }
+
+  return c.json(updated);
 });
 
 // DELETE /api/tasks/:id
@@ -635,7 +682,8 @@ app.get("/api/parcelas", async (c) => {
     .from("tasks")
     .select("*")
     .eq("user_id", user.id)
-    .not("parcela_group_id", "is", null);
+    .not("parcela_group_id", "is", null)
+    .is("deleted_at", null);
 
   if (error) return c.json({ error: error.message }, 500);
 
@@ -670,6 +718,50 @@ app.get("/api/parcelas", async (c) => {
   });
 
   return c.json(result);
+});
+
+// DELETE /api/parcelas/:id (soft delete)
+app.delete("/api/parcelas/:id", async (c) => {
+  const parcela_group_id = c.req.param("id");
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("parcela_group_id", parcela_group_id)
+    .eq("user_id", user.id);
+
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ ok: true });
+});
+
+// PUT /api/parcelas/:id
+app.put("/api/parcelas/:id", async (c) => {
+  const parcela_group_id = c.req.param("id");
+  const body = await c.req.json();
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const update: Record<string, unknown> = {};
+  if (body.title !== undefined) update.title = body.title;
+  if (body.type !== undefined) update.type = body.type;
+  if (body.price !== undefined) update.price = body.price;
+
+  if (Object.keys(update).length === 0) {
+    return c.json({ error: "Nenhum campo para atualizar." }, 400);
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .update(update)
+    .eq("parcela_group_id", parcela_group_id)
+    .eq("user_id", user.id);
+
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ ok: true });
 });
 
 // ══════════════════════════════════════════════════════════

@@ -7,11 +7,19 @@ on:
 
 jobs:
   ping:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
     steps:
       - name: Ping API Health
+        continue-on-error: true
         run: |
-          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" https://api-hono-jet.vercel.app/api/health)
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            --connect-timeout 30 \
+            --max-time 60 \
+            --retry 3 \
+            --retry-delay 10 \
+            --retry-connrefused \
+            https://api-hono-jet.vercel.app/api/health)
           RESPONSE=$(cat /tmp/response.json)
           echo "HTTP Status: $HTTP_CODE"
           echo "Response: $RESPONSE"
