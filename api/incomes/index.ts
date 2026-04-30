@@ -31,9 +31,20 @@ app.post("/api/incomes", async (c) => {
     return c.json({ error: parsed.error.errors[0].message }, 400);
   }
 
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("owner_id", user.id)
+    .eq("type", "personal")
+    .single();
+
+  if (groupError || !group) {
+    return c.json({ error: "Grupo pessoal não encontrado." }, 500);
+  }
+
   const { data, error } = await supabase
     .from("incomes")
-    .insert([{ user_id: user.id, ...parsed.data }])
+    .insert([{ user_id: user.id, group_id: group.id, ...parsed.data }])
     .select();
 
   if (error) return c.json({ error: error.message }, 500);

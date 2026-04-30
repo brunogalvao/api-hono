@@ -1,6 +1,5 @@
 import { createAuthApp } from "../../config/baseApp";
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
 import { z } from "zod";
 
 export const config = { runtime: "edge" };
@@ -51,70 +50,58 @@ app.post("/api/groups/:id/invite", async (c) => {
     return c.json({ error: "Este usuário já é membro do grupo." }, 409);
   }
 
-  // Cria o invite — service role para bypassar RLS no insert
   const serviceClient = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
+  // Cria o registro do convite no banco
   const { data: invite, error: inviteError } = await serviceClient
     .from("invites")
     .insert([{
-      group_id:   groupId,
-      email:      parsed.data.email,
-      name:       parsed.data.name,
-      phone:      parsed.data.phone ?? null,
-      access_expenses: parsed.data.access_expenses,
-      access_incomes: parsed.data.access_incomes,
+      group_id:            groupId,
+      email:               parsed.data.email,
+      name:                parsed.data.name,
+      phone:               parsed.data.phone ?? null,
+      access_expenses:     parsed.data.access_expenses,
+      access_incomes:      parsed.data.access_incomes,
       access_installments: parsed.data.access_installments,
-      access_advisor: parsed.data.access_advisor,
-      invited_by: user.id,
+      access_advisor:      parsed.data.access_advisor,
+      invited_by:          user.id,
     }])
     .select()
     .single();
 
   if (inviteError) return c.json({ error: inviteError.message }, 500);
 
-  // Envia e-mail via Resend (graceful degradation se RESEND_API_KEY não estiver configurado)
-  const resendKey = process.env.RESEND_API_KEY;
-  if (resendKey) {
-    const resend = new Resend(resendKey);
-    const frontendUrl = process.env.FRONTEND_URL ?? "https://front-hono.vercel.app";
-    const inviteUrl = `${frontendUrl}/invite/${invite.token}`;
+  // Envia convite via Supabase Auth — cria o usuário se não existir
+  // e envia email nativo com link que já autentica o convidado
+  const frontendUrl = process.env.FRONTEND_URL ?? "https://front-hono.vercel.app";
+  const redirectTo = `${frontendUrl}/invite/${invite.token}`;
 
-    const inviterName = user.user_metadata?.displayName || user.email;
+  const { error: authError } = await serviceClient.auth.admin.inviteUserByEmail(
+    parsed.data.email,
+    { redirectTo, data: { displayName: parsed.data.name } }
+  );
 
-    await resend.emails.send({
-      from: "Finance <noreply@resend.dev>",
-      to: [parsed.data.email],
-      subject: `${inviterName} convidou você para o grupo "${group.name}"`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #fff; border-radius: 12px;">
-          <h2 style="color: #111; margin-bottom: 8px;">Convite para o Finance</h2>
-          <p style="color: #555; font-size: 15px;">
-            Olá, <strong>${parsed.data.name}</strong>!
-          </p>
-          <p style="color: #555; font-size: 15px;">
-            <strong>${inviterName}</strong> convidou você para colaborar no grupo
-            <strong>"${group.name}"</strong>.
-          </p>
-          <p style="color: #555; font-size: 15px;">
-            Com acesso ao grupo você pode visualizar e adicionar despesas,
-            rendimentos e compras a prazo em conjunto.
-          </p>
-          <a href="${inviteUrl}"
-             style="display: inline-block; margin-top: 24px; padding: 12px 28px;
-                    background: #7c3aed; color: #fff; border-radius: 8px;
-                    text-decoration: none; font-weight: 600; font-size: 15px;">
-            Aceitar convite
-          </a>
-          <p style="color: #999; font-size: 12px; margin-top: 32px;">
-            Este link expira em 48 horas. Se você não esperava este convite, ignore este e-mail.
-          </p>
-        </div>
-      `,
-    });
+  if (authError) {
+    const alreadyExists =
+      authError.message.toLowerCase().includes("already") ||
+      authError.message.toLowerCase().includes("registered") ||
+      authError.message.toLowerCase().includes("exists");
+
+    if (!alreadyExists) {
+      // Erro real (URL não permitida, API key inválida, etc.) — reverte o invite
+      await serviceClient.from("invites").delete().eq("id", invite.id);
+      return c.json({ error: `Falha ao enviar e-mail: ${authError.message}` }, 500);
+    }
+    // Usuário já tem conta: convite DB válido, ele pode acessar pelo link diretamente
+    return c.json({
+      message: "Convite criado. O usuário já possui conta — compartilhe o link de acesso.",
+      invite_id: invite.id,
+      invite_url: redirectTo,
+    }, 201);
   }
 
   return c.json({ message: "Convite enviado com sucesso.", invite_id: invite.id }, 201);

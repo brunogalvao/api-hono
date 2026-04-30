@@ -1073,6 +1073,32 @@ app.post("/api/groups/:id/invite", async (c) => {
     .single();
 
   if (error) return c.json({ error: error.message }, 500);
+
+  const frontendUrl = process.env.FRONTEND_URL ?? "https://front-hono.vercel.app";
+  const redirectTo = `${frontendUrl}/invite/${invite.token}`;
+
+  const { error: inviteAuthError } = await serviceClient.auth.admin.inviteUserByEmail(
+    parsed.data.email,
+    { redirectTo, data: { displayName: parsed.data.name } }
+  );
+
+  if (inviteAuthError) {
+    const alreadyExists =
+      inviteAuthError.message.toLowerCase().includes("already") ||
+      inviteAuthError.message.toLowerCase().includes("registered") ||
+      inviteAuthError.message.toLowerCase().includes("exists");
+
+    if (!alreadyExists) {
+      await serviceClient.from("invites").delete().eq("id", invite.id);
+      return c.json({ error: `Falha ao enviar e-mail: ${inviteAuthError.message}` }, 500);
+    }
+    return c.json({
+      message: "Convite criado. O usuário já possui conta — compartilhe o link de acesso.",
+      invite_id: invite.id,
+      invite_url: redirectTo,
+    }, 201);
+  }
+
   return c.json({ message: "Convite enviado com sucesso.", invite_id: invite.id }, 201);
 });
 

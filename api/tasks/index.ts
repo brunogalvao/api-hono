@@ -44,9 +44,22 @@ app.post("/api/tasks", async (c) => {
     return c.json({ error: parsed.error.errors[0].message }, 400);
   }
 
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("owner_id", user.id)
+    .eq("type", "personal")
+    .single();
+
+  if (groupError || !group) {
+    return c.json({ error: "Grupo pessoal não encontrado." }, 500);
+  }
+
+  const group_id = group.id;
+
   const { data, error } = await supabase
     .from("tasks")
-    .insert([{ ...parsed.data, user_id: user.id }])
+    .insert([{ ...parsed.data, user_id: user.id, group_id }])
     .select();
 
   if (error) return c.json({ error: error.message }, 500);
@@ -60,6 +73,7 @@ app.post("/api/tasks", async (c) => {
       if (m === original.mes) continue; // mês original já existe
       copies.push({
         user_id: user.id,
+        group_id,
         title: original.title,
         price: original.price,
         done: "Pendente",
@@ -110,6 +124,7 @@ app.post("/api/tasks", async (c) => {
       const price = i === parcelaTotal ? parcelaFinal : parcelaBase;
       copies.push({
         user_id: user.id,
+        group_id,
         title: original.title,
         price,
         done: "Pendente",
