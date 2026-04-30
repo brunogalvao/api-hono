@@ -19,7 +19,17 @@ app.post("/api/invite/:token/accept", async (c) => {
   // Valida o token
   const { data: invite, error } = await serviceClient
     .from("invites")
-    .select("id, group_id, email, expires_at, accepted_at")
+    .select(`
+      id,
+      group_id,
+      email,
+      expires_at,
+      accepted_at,
+      access_expenses,
+      access_incomes,
+      access_installments,
+      access_advisor
+    `)
     .eq("token", token)
     .single();
 
@@ -50,7 +60,15 @@ app.post("/api/invite/:token/accept", async (c) => {
   // Adiciona ao grupo como member
   const { error: memberError } = await serviceClient
     .from("group_members")
-    .insert([{ group_id: invite.group_id, user_id: user.id, role: "member" }]);
+    .insert([{
+      group_id: invite.group_id,
+      user_id: user.id,
+      role: "member",
+      access_expenses: invite.access_expenses ?? true,
+      access_incomes: invite.access_incomes ?? true,
+      access_installments: invite.access_installments ?? true,
+      access_advisor: invite.access_advisor ?? true,
+    }]);
 
   if (memberError) return c.json({ error: memberError.message }, 500);
 

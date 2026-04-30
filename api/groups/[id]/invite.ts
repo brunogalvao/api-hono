@@ -11,6 +11,10 @@ const inviteSchema = z.object({
   name:  z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("E-mail inválido"),
   phone: z.string().optional(),
+  access_expenses: z.boolean().optional().default(true),
+  access_incomes: z.boolean().optional().default(true),
+  access_installments: z.boolean().optional().default(true),
+  access_advisor: z.boolean().optional().default(true),
 });
 
 // POST /api/groups/:id/invite — owner envia convite por e-mail
@@ -61,6 +65,10 @@ app.post("/api/groups/:id/invite", async (c) => {
       email:      parsed.data.email,
       name:       parsed.data.name,
       phone:      parsed.data.phone ?? null,
+      access_expenses: parsed.data.access_expenses,
+      access_incomes: parsed.data.access_incomes,
+      access_installments: parsed.data.access_installments,
+      access_advisor: parsed.data.access_advisor,
       invited_by: user.id,
     }])
     .select()
