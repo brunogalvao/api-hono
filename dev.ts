@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import { GET as getOpenApi } from "./api/openapi";
 import { GET as getSwagger } from "./api/swagger";
 
@@ -69,6 +70,28 @@ function getPublicSupabaseClient() {
     process.env.SUPABASE_ANON_KEY!,
   );
 }
+
+const createGroupSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório").max(100),
+  type: z.enum(["personal", "shared"]).default("shared"),
+});
+
+const inviteSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("E-mail inválido"),
+  phone: z.string().optional(),
+  access_expenses: z.boolean().optional().default(true),
+  access_incomes: z.boolean().optional().default(true),
+  access_installments: z.boolean().optional().default(true),
+  access_advisor: z.boolean().optional().default(true),
+});
+
+const updateAccessSchema = z.object({
+  access_expenses: z.boolean().optional(),
+  access_incomes: z.boolean().optional(),
+  access_installments: z.boolean().optional(),
+  access_advisor: z.boolean().optional(),
+});
 
 // ── Ping ────────────────────────────────────────────────
 app.get("/api/ping", (c) => c.text("pong 🏓"));
@@ -762,6 +785,387 @@ app.put("/api/parcelas/:id", async (c) => {
 
   if (error) return c.json({ error: error.message }, 500);
   return c.json({ ok: true });
+});
+
+// ══════════════════════════════════════════════════════════
+// GROUPS
+// ══════════════════════════════════════════════════════════
+
+app.get("/api/groups", async (c) => {
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("role, joined_at, groups(id, name, type, owner_id, created_at)")
+    .eq("user_id", user.id)
+    .order("joined_at", { ascending: true });
+
+  if (error) return c.json({ error: error.message }, 500);
+
+  const groups = (data ?? []).map((row: any) => ({
+    ...row.groups,
+    role: row.role,
+    joined_at: row.joined_at,
+  }));
+
+  return c.json(groups);
+});
+
+app.post("/api/groups", async (c) => {
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const body = await c.req.json();
+  const parsed = createGroupSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.errors[0].message }, 400);
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .insert([{ ...parsed.data, owner_id: user.id }])
+    .select()
+    .single();
+
+  if (groupError) return c.json({ error: groupError.message }, 500);
+
+  const { error: memberError } = await supabase
+    .from("group_members")
+    .insert([{
+      group_id: group.id,
+      user_id: user.id,
+      role: "owner",
+      access_expenses: true,
+      access_incomes: true,
+      access_installments: true,
+      access_advisor: true,
+    }]);
+
+  if (memberError) return c.json({ error: memberError.message }, 500);
+
+  return c.json({
+    ...group,
+    role: "owner",
+    joined_at: new Date().toISOString(),
+  }, 201);
+});
+
+app.get("/api/groups/:id/members", async (c) => {
+  const groupId = c.req.param("id");
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership) {
+    return c.json({ error: "Grupo não encontrado ou acesso negado." }, 403);
+  }
+
+  const { data, error } = await supabase
+    .from("group_members")
+    .select(`
+      user_id,
+      role,
+      joined_at,
+      access_expenses,
+      access_incomes,
+      access_installments,
+      access_advisor,
+      user_profiles (
+        display_name,
+        avatar_url,
+        email
+      )
+    `)
+    .eq("group_id", groupId)
+    .order("joined_at", { ascending: true });
+
+  if (error) return c.json({ error: error.message }, 500);
+
+  const members = (data ?? []).map((row: any) => ({
+    user_id: row.user_id,
+    role: row.role,
+    joined_at: row.joined_at,
+    access_expenses: row.access_expenses ?? true,
+    access_incomes: row.access_incomes ?? true,
+    access_installments: row.access_installments ?? true,
+    access_advisor: row.access_advisor ?? true,
+    display_name: row.user_profiles?.display_name ?? null,
+    avatar_url: row.user_profiles?.avatar_url ?? null,
+    email: row.user_profiles?.email ?? null,
+  }));
+
+  return c.json(members);
+});
+
+app.patch("/api/groups/:id/members/:userId", async (c) => {
+  const groupId = c.req.param("id");
+  const targetUserId = c.req.param("userId");
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const body = await c.req.json();
+  const parsed = updateAccessSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.errors[0].message }, 400);
+  }
+
+  if (Object.keys(parsed.data).length === 0) {
+    return c.json({ error: "Nenhuma permissão foi informada." }, 400);
+  }
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", groupId)
+    .single();
+
+  if (!group || group.owner_id !== user.id) {
+    return c.json({ error: "Apenas o owner pode atualizar permissões." }, 403);
+  }
+
+  if (targetUserId === user.id) {
+    return c.json({ error: "O owner não pode alterar as próprias permissões." }, 400);
+  }
+
+  const { data: updatedMember, error } = await supabase
+    .from("group_members")
+    .update(parsed.data)
+    .eq("group_id", groupId)
+    .eq("user_id", targetUserId)
+    .select("user_id, role, joined_at, access_expenses, access_incomes, access_installments, access_advisor")
+    .single();
+
+  if (error) return c.json({ error: error.message }, 500);
+
+  return c.json(updatedMember);
+});
+
+app.delete("/api/groups/:id/members/:userId", async (c) => {
+  const groupId = c.req.param("id");
+  const targetUserId = c.req.param("userId");
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", groupId)
+    .single();
+
+  if (!group || group.owner_id !== user.id) {
+    return c.json({ error: "Apenas o owner pode remover membros." }, 403);
+  }
+
+  if (targetUserId === user.id) {
+    return c.json({ error: "O owner não pode ser removido do grupo." }, 400);
+  }
+
+  const { error } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", targetUserId);
+
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ message: "Membro removido com sucesso." });
+});
+
+app.get("/api/groups/:id/invites", async (c) => {
+  const groupId = c.req.param("id");
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", groupId)
+    .single();
+
+  if (!group || group.owner_id !== user.id) {
+    return c.json({ error: "Apenas o owner pode visualizar convites." }, 403);
+  }
+
+  const serviceClient = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const { data, error } = await serviceClient
+    .from("invites")
+    .select(`
+      id,
+      email,
+      name,
+      phone,
+      token,
+      expires_at,
+      created_at,
+      access_expenses,
+      access_incomes,
+      access_installments,
+      access_advisor
+    `)
+    .eq("group_id", groupId)
+    .is("accepted_at", null)
+    .order("created_at", { ascending: false });
+
+  if (error) return c.json({ error: error.message }, 500);
+
+  return c.json(data ?? []);
+});
+
+app.post("/api/groups/:id/invite", async (c) => {
+  const groupId = c.req.param("id");
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const body = await c.req.json();
+  const parsed = inviteSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.errors[0].message }, 400);
+  }
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("id, name, owner_id")
+    .eq("id", groupId)
+    .single();
+
+  if (!group || group.owner_id !== user.id) {
+    return c.json({ error: "Apenas o owner pode convidar membros." }, 403);
+  }
+
+  const serviceClient = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const { data: invite, error } = await serviceClient
+    .from("invites")
+    .insert([{
+      group_id: groupId,
+      email: parsed.data.email,
+      name: parsed.data.name,
+      phone: parsed.data.phone ?? null,
+      invited_by: user.id,
+      access_expenses: parsed.data.access_expenses,
+      access_incomes: parsed.data.access_incomes,
+      access_installments: parsed.data.access_installments,
+      access_advisor: parsed.data.access_advisor,
+    }])
+    .select()
+    .single();
+
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ message: "Convite enviado com sucesso.", invite_id: invite.id }, 201);
+});
+
+app.patch("/api/groups/:id/invites/:inviteId", async (c) => {
+  const groupId = c.req.param("id");
+  const inviteId = c.req.param("inviteId");
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const body = await c.req.json();
+  const parsed = updateAccessSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.errors[0].message }, 400);
+  }
+
+  if (Object.keys(parsed.data).length === 0) {
+    return c.json({ error: "Nenhuma permissão foi informada." }, 400);
+  }
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", groupId)
+    .single();
+
+  if (!group || group.owner_id !== user.id) {
+    return c.json({ error: "Apenas o owner pode atualizar convites." }, 403);
+  }
+
+  const serviceClient = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const { data: invite, error } = await serviceClient
+    .from("invites")
+    .update(parsed.data)
+    .eq("id", inviteId)
+    .eq("group_id", groupId)
+    .is("accepted_at", null)
+    .select(`
+      id,
+      email,
+      name,
+      phone,
+      token,
+      expires_at,
+      created_at,
+      access_expenses,
+      access_incomes,
+      access_installments,
+      access_advisor
+    `)
+    .single();
+
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json(invite);
+});
+
+app.delete("/api/groups/:id/invites/:inviteId", async (c) => {
+  const groupId = c.req.param("id");
+  const inviteId = c.req.param("inviteId");
+  const supabase = getSupabaseClient(c);
+  const { data: { user }, error: authError } = await getAuthenticatedUser(c);
+  if (authError || !user) return c.json({ error: "Usuário não autenticado." }, 401);
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", groupId)
+    .single();
+
+  if (!group || group.owner_id !== user.id) {
+    return c.json({ error: "Apenas o owner pode revogar convites." }, 403);
+  }
+
+  const serviceClient = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const { error } = await serviceClient
+    .from("invites")
+    .delete()
+    .eq("id", inviteId)
+    .eq("group_id", groupId)
+    .is("accepted_at", null);
+
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ message: "Convite revogado com sucesso." });
 });
 
 // ══════════════════════════════════════════════════════════
