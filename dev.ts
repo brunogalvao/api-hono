@@ -5,6 +5,7 @@ import { cors } from "hono/cors";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { z } from "zod";
+import { getDolarRate } from "./api/utils/currency";
 import { GET as getOpenApi } from "./api/openapi";
 import { GET as getSwagger } from "./api/swagger";
 
@@ -727,17 +728,10 @@ app.post("/api/ia/analise-investimento", async (c) => {
     const dicasEconomia = rendimentoDisponivel * 0.3;
     const resultadoLiquido = rendimentoMes - tarefasPagas;
 
-    let cotacaoDolar = 0;
+    const cotacaoDolar = await getDolarRate();
     let quantidadeDolar = 0;
-    try {
-      const dolarResponse = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
-      const dolarData = await dolarResponse.json();
-      cotacaoDolar = parseFloat(dolarData.USDBRL.bid);
-      if (resultadoLiquido >= rendimentoMes * 0.3) {
-        quantidadeDolar = (resultadoLiquido * 0.3) / cotacaoDolar;
-      }
-    } catch {
-      console.warn("Erro ao buscar cotação do dólar");
+    if (resultadoLiquido >= rendimentoMes * 0.3) {
+      quantidadeDolar = (resultadoLiquido * 0.3) / cotacaoDolar;
     }
 
     return c.json({

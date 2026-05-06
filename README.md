@@ -203,15 +203,19 @@ api-hono/
 pnpm dev           # Desenvolvimento local
 pnpm build         # Build para produção
 pnpm start         # Executar build
+pnpm test          # Testes unitários (vitest, one-shot)
 pnpm test:smoke    # Smoke tests contra a URL de produção
 ```
 
 ### Testes
 
-O projeto usa **Vitest** para smoke tests contra a URL real da Vercel. Os testes verificam se a API está respondendo corretamente após cada deploy, sem precisar de banco de dados mockado.
+O projeto usa **Vitest** para testes unitários e smoke tests contra a URL real da Vercel.
 
 ```bash
-# Rodar smoke tests contra a URL de produção
+# Testes unitários (one-shot, CI)
+pnpm test
+
+# Smoke tests contra a URL de produção
 pnpm test:smoke
 ```
 
