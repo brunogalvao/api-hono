@@ -1,0 +1,85 @@
+name: Load Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Cenário a executar'
+        required: true
+        default: 'public'
+        type: choice
+        options:
+          - public
+          - authenticated
+          - ia
+          - all
+      profile:
+        description: 'Perfil de carga'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - load
+          - stress
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] \
+            https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Run public load test
+        if: inputs.scenario == 'public' || inputs.scenario == 'all'
+        run: |
+          k6 run \
+            --env API_URL=${{ vars.API_URL || 'https://api-hono-jet.vercel.app' }} \
+            --env PROFILE=${{ inputs.profile }} \
+            --out json=load-tests/reports/public.json \
+            load-tests/scenarios/public.js
+        continue-on-error: ${{ inputs.scenario == 'all' }}
+
+      - name: Run authenticated load test
+        if: inputs.scenario == 'authenticated' || inputs.scenario == 'all'
+        run: |
+          k6 run \
+            --env API_URL=${{ vars.API_URL || 'https://api-hono-jet.vercel.app' }} \
+            --env LOAD_TEST_TOKEN=${{ secrets.LOAD_TEST_TOKEN }} \
+            --env PROFILE=${{ inputs.profile }} \
+            --out json=load-tests/reports/authenticated.json \
+            load-tests/scenarios/authenticated.js
+        continue-on-error: ${{ inputs.scenario == 'all' }}
+
+      - name: Run IA load test
+        if: inputs.scenario == 'ia' || inputs.scenario == 'all'
+        run: |
+          k6 run \
+            --env API_URL=${{ vars.API_URL || 'https://api-hono-jet.vercel.app' }} \
+            --env LOAD_TEST_TOKEN=${{ secrets.LOAD_TEST_TOKEN }} \
+            --out json=load-tests/reports/ia.json \
+            load-tests/scenarios/ia.js
+        continue-on-error: ${{ inputs.scenario == 'all' }}
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-reports-${{ github.run_id }}
+          path: load-tests/reports/
+          retention-days: 30

@@ -232,6 +232,57 @@ O que é testado:
 
 Os testes também rodam automaticamente via GitHub Actions sempre que um deploy em **produção** na Vercel é concluído com sucesso (`.github/workflows/smoke-test.yml`).
 
+## 🏋️ Load Testing
+
+O projeto usa **k6** para testes de carga contra a URL de produção. Os cenários ficam em `load-tests/scenarios/`.
+
+### Pré-requisito
+
+```bash
+brew install k6
+```
+
+### Scripts
+
+```bash
+# Endpoints públicos (sem token)
+pnpm load:public
+
+# Endpoints autenticados
+LOAD_TEST_TOKEN=<seu-jwt> pnpm load:auth
+
+# Endpoint de IA (baixa carga — tem custo)
+LOAD_TEST_TOKEN=<seu-jwt> pnpm load:ia
+
+# Todos os cenários em sequência
+LOAD_TEST_TOKEN=<seu-jwt> pnpm load:all
+```
+
+### Cenários
+
+| Script | Endpoints testados | VUs |
+|---|---|---|
+| `public.js` | `GET /api/ping`, `GET /api/health` | 3 |
+| `authenticated.js` | `GET /api/user`, `/api/tasks`, `/api/incomes`, `/api/incomes/total-por-mes` | até 10 |
+| `ia.js` | `POST /api/ia/analise-investimento` | até 5 |
+
+### Thresholds (SLA mínimo)
+
+| Endpoint | p95 | p99 | Error rate |
+|---|---|---|---|
+| `GET /api/ping` | < 500ms | — | < 1% |
+| `GET /api/health` | < 1000ms | — | < 1% |
+| `GET /api/user` | < 1500ms | < 3000ms | < 1% |
+| `GET /api/tasks` | < 2000ms | < 3000ms | < 1% |
+| `GET /api/incomes` | < 2000ms | < 3000ms | < 1% |
+| `POST /api/ia/analise-investimento` | < 5000ms | < 8000ms | < 5% |
+
+### GitHub Actions
+
+Os load tests podem ser disparados manualmente via `workflow_dispatch` em `.github/workflows/load-test.yml`. Escolha o cenário (`public` / `authenticated` / `ia` / `all`) e o perfil (`smoke` / `load` / `stress`). Os relatórios JSON ficam disponíveis como artifacts por 30 dias.
+
+> Baselines medidas e notas sobre o ambiente: [`load-tests/baselines.md`](load-tests/baselines.md)
+
 ## 📈 Roadmap
 
 - [x] CRUD de rendimentos
