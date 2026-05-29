@@ -44,15 +44,29 @@ app.post("/api/tasks", async (c) => {
     return c.json({ error: parsed.error.errors[0].message }, 400);
   }
 
-  const { data: group, error: groupError } = await supabase
+  let { data: group, error: groupError } = await supabase
     .from("groups")
     .select("id")
     .eq("owner_id", user.id)
     .eq("type", "personal")
-    .single();
+    .maybeSingle();
 
-  if (groupError || !group) {
-    return c.json({ error: "Grupo pessoal não encontrado." }, 500);
+  if (groupError) {
+    return c.json({ error: groupError.message }, 500);
+  }
+
+  if (!group) {
+    const { data: newGroup, error: createError } = await supabase
+      .from("groups")
+      .insert({ owner_id: user.id, type: "personal", name: "Pessoal" })
+      .select("id")
+      .single();
+
+    if (createError || !newGroup) {
+      return c.json({ error: "Erro ao criar grupo pessoal." }, 500);
+    }
+
+    group = newGroup;
   }
 
   const group_id = group.id;
