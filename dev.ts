@@ -7,7 +7,6 @@ import { Resend } from "resend";
 import { z } from "zod";
 import { getDolarRate } from "./api/utils/currency";
 import { GET as getOpenApi } from "./api/openapi";
-import { GET as getSwagger } from "./api/swagger";
 
 const app = new Hono();
 
@@ -1267,7 +1266,6 @@ app.delete("/api/groups/:id/invites/:inviteId", async (c) => {
 // ══════════════════════════════════════════════════════════
 
 app.get("/api/openapi", () => getOpenApi());
-app.get("/api/swagger", () => getSwagger());
 
 // ══════════════════════════════════════════════════════════
 // HOMEPAGE

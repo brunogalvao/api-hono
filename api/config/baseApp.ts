@@ -5,11 +5,11 @@ import { authMiddleware, type AuthVariables } from "./authMiddleware";
 
 export type { AuthVariables };
 
+const sharedMiddleware = [corsMiddleware, errorHandler, requestLogger] as const;
+
 export function createBaseApp() {
   const app = new Hono();
-  app.use("*", corsMiddleware);
-  app.use("*", errorHandler);
-  app.use("*", requestLogger);
+  sharedMiddleware.forEach((m) => app.use("*", m));
   return app;
 }
 
@@ -17,9 +17,6 @@ export function createBaseApp() {
 // Nas rotas, use c.get("user") e c.get("supabase") diretamente.
 export function createAuthApp() {
   const app = new Hono<{ Variables: AuthVariables }>();
-  app.use("*", corsMiddleware);
-  app.use("*", errorHandler);
-  app.use("*", requestLogger);
-  app.use("*", authMiddleware);
+  [...sharedMiddleware, authMiddleware].forEach((m) => app.use("*", m));
   return app;
 }

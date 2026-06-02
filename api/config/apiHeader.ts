@@ -25,8 +25,7 @@ export async function corsMiddleware(c: Context, next: Next) {
 
   await next();
 
-  c.res.headers.set("Access-Control-Allow-Origin", allowedOrigin);
-  c.res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-  c.res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-  c.res.headers.set("Access-Control-Max-Age", "86400");
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    c.res.headers.set(key, value);
+  }
 }

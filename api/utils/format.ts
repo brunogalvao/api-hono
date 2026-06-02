@@ -1,3 +1,5 @@
+// Runtime Edge/Node — sem i18n, locale fixo pt-BR.
+// Duplicação intencional com front-hono/src/utils/format.ts (runtimes e requisitos de i18n distintos).
 export const formatToBRL = (value: number | string) => {
   const number = typeof value === 'string' ? Number(value) : value;
   if (isNaN(number)) return 'Valor inválido';
