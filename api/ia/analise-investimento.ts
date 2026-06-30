@@ -16,51 +16,49 @@ app.post("/api/ia/analise-investimento", async (c) => {
   const targetMonth = mes || currentDate.getMonth() + 1;
   const targetYear = ano || currentDate.getFullYear();
 
-  const [incomesResult, tasksResult, cotacaoDolar] = await Promise.all([
+  const start = `${targetYear}-${String(targetMonth).padStart(2, "0")}-01`;
+  const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+  const end = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const [transactionsResult, cotacaoDolar] = await Promise.all([
     supabase
-      .from("incomes")
-      .select("valor, mes, ano")
-      .eq("user_id", user.id)
-      .eq("mes", targetMonth)
-      .eq("ano", targetYear),
-    supabase
-      .from("tasks")
-      .select("price, done, mes, ano")
-      .eq("user_id", user.id)
-      .eq("mes", targetMonth)
-      .eq("ano", targetYear),
+      .from("transactions")
+      .select("type, status, amount")
+      .eq("created_by", user.id)
+      .gte("date", start)
+      .lte("date", end),
     getDolarRate(),
   ]);
 
-  if (incomesResult.error) return c.json({ error: incomesResult.error.message }, 500);
-  if (tasksResult.error) return c.json({ error: tasksResult.error.message }, 500);
+  if (transactionsResult.error) {
+    console.error("[analise-investimento] Supabase error:", transactionsResult.error.message);
+    return c.json({ error: transactionsResult.error.message }, 500);
+  }
 
-  const incomes = incomesResult.data ?? [];
-  const tasks = tasksResult.data ?? [];
+  const transactions = transactionsResult.data ?? [];
+  console.log(`[analise-investimento] user=${user.id} range=${start}→${end} rows=${transactions.length}`, transactions.slice(0, 3));
 
-  const rendimentoMes = incomes.reduce(
-    (total, income) => total + parseFloat(income.valor || "0"),
-    0,
-  );
+  const rendimentoMes = transactions
+    .filter((tx) => tx.type === "receita")
+    .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const tarefasPagas = tasks
-    .filter((task) => task.done === "Pago")
-    .reduce((total, task) => total + parseFloat(task.price || "0"), 0);
+  const tarefasPagas = transactions
+    .filter((tx) => tx.type === "despesa" && tx.status === "pago")
+    .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const tarefasPendentes = tasks
-    .filter((task) => task.done === "Pendente")
-    .reduce((total, task) => total + parseFloat(task.price || "0"), 0);
+  const tarefasPendentes = transactions
+    .filter((tx) => tx.type === "despesa" && tx.status === "pendente")
+    .reduce((sum, tx) => sum + tx.amount, 0);
 
   const totalTarefas = tarefasPagas + tarefasPendentes;
-  const rendimentoDisponivel = rendimentoMes - totalTarefas;
   const percentualGasto = rendimentoMes > 0 ? (totalTarefas / rendimentoMes) * 100 : 0;
   const percentualDisponivel = 100 - percentualGasto;
-  const dicasEconomia = rendimentoDisponivel * 0.3;
   const resultadoLiquido = rendimentoMes - tarefasPagas;
+  const valorLivre = rendimentoMes - totalTarefas;
 
   let quantidadeDolar = 0;
-  if (resultadoLiquido >= rendimentoMes * 0.3) {
-    quantidadeDolar = (resultadoLiquido * 0.3) / cotacaoDolar;
+  if (cotacaoDolar > 0 && valorLivre > 0) {
+    quantidadeDolar = valorLivre / cotacaoDolar;
   }
 
   return c.json({
@@ -70,8 +68,8 @@ app.post("/api/ia/analise-investimento", async (c) => {
     rendimentoMes,
     percentualDisponivel,
     percentualGasto,
-    dicasEconomia,
     resultadoLiquido,
+    valorLivre,
     cotacaoDolar,
     quantidadeDolar,
   });
