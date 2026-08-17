@@ -1,4 +1,4 @@
--- Adiciona group_id às tabelas existentes (nullable para backfill)
+-- Archived duplicate migration. Adiciona group_id às tabelas existentes (nullable para backfill)
 ALTER TABLE tasks   ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES groups(id);
 ALTER TABLE incomes ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES groups(id);
 

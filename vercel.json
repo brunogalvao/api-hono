@@ -1,9 +1,23 @@
 {
   "version": 2,
   "buildCommand": "echo 'No build needed'",
-  "outputDirectory": ".",
+  "outputDirectory": "public",
   "installCommand": "pnpm install",
   "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/workspaces/:workspaceId/invites/:inviteId/resend",
+      "destination": "/api/workspace-invites-admin?operation=resend&workspaceId=:workspaceId&inviteId=:inviteId"
+    },
+    {
+      "source": "/api/workspaces/:workspaceId/invites/:inviteId",
+      "destination": "/api/workspace-invites-admin?operation=cancel&workspaceId=:workspaceId&inviteId=:inviteId"
+    },
+    {
+      "source": "/api/workspaces/:workspaceId/invites",
+      "destination": "/api/workspace-invites-admin?operation=create&workspaceId=:workspaceId"
+    }
+  ],
   "headers": [
     {
       "source": "/",

@@ -7,6 +7,8 @@ import { Resend } from "resend";
 import { z } from "zod";
 import { getDolarRate } from "./api/utils/currency";
 import { GET as getOpenApi } from "./api/openapi";
+import workspaceInviteRoutes from "./api/workspace-invites-admin";
+import workspaceInviteAuthRoutes from "./api/workspace-invites/[...path]";
 
 const app = new Hono();
 
@@ -163,6 +165,13 @@ const updateAccessSchema = z.object({
 
 // ── Ping ────────────────────────────────────────────────
 app.get("/api/ping", (c) => c.text("pong 🏓"));
+
+// ── Secure workspace invitations (same handlers used by Vercel) ──
+app.all("/api/workspaces/:id/invites", (c) => workspaceInviteRoutes(c.req.raw));
+app.all("/api/workspaces/:id/invites/:inviteId/resend", (c) => workspaceInviteRoutes(c.req.raw));
+app.all("/api/workspaces/:id/invites/:inviteId", (c) => workspaceInviteRoutes(c.req.raw));
+app.all("/api/workspace-invites/prepare-auth", (c) => workspaceInviteAuthRoutes(c.req.raw));
+app.all("/api/workspace-invites/operation", (c) => workspaceInviteAuthRoutes(c.req.raw));
 
 // ── Health ──────────────────────────────────────────────
 app.get("/api/health", async (c) => {

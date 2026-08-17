@@ -1,5 +1,3 @@
--- Função chamada após cada novo usuário ser criado no Supabase Auth.
--- Cria automaticamente um grupo pessoal e registra o usuário como owner.
 CREATE OR REPLACE FUNCTION public.handle_new_user_personal_group()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -20,10 +18,9 @@ BEGIN
 END;
 $$;
 
--- Trigger disparado após INSERT em auth.users
 DROP TRIGGER IF EXISTS on_auth_user_created_personal_group ON auth.users;
 
 CREATE TRIGGER on_auth_user_created_personal_group
   AFTER INSERT ON auth.users
   FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user_personal_group();
+  EXECUTE FUNCTION public.handle_new_user_personal_group();;

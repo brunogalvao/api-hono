@@ -1,4 +1,4 @@
--- Backfill user_profiles para usuários já existentes
+-- Archived duplicate migration. Backfill user_profiles para usuários já existentes
 INSERT INTO public.user_profiles (id, display_name, avatar_url, email)
 SELECT
   id,

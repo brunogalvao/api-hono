@@ -1,4 +1,4 @@
--- Adiciona colunas de parcelamento na tabela tasks
+-- Archived duplicate migration. Adiciona colunas de parcelamento na tabela tasks
 alter table tasks
   add column if not exists parcela_numero integer,
   add column if not exists parcela_total integer,

@@ -1,4 +1,4 @@
--- Tabela de grupos/workspaces
+-- Archived duplicate migration. Tabela de grupos/workspaces
 CREATE TABLE IF NOT EXISTS groups (
   id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   name       text        NOT NULL,

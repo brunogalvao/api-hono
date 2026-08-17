@@ -1,0 +1,3 @@
+ALTER TABLE invites
+  ADD COLUMN IF NOT EXISTS name  text,
+  ADD COLUMN IF NOT EXISTS phone text;;

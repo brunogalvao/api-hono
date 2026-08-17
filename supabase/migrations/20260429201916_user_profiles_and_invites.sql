@@ -1,5 +1,3 @@
--- ─── user_profiles ────────────────────────────────────────────────────────────
--- Espelho público de auth.users para exibir avatar e nome de membros do grupo.
 CREATE TABLE IF NOT EXISTS user_profiles (
   id           uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name text,
@@ -12,11 +10,9 @@ ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON TABLE user_profiles TO authenticated;
 
--- Qualquer membro autenticado pode ler perfis (nome/avatar são info pública no contexto do grupo)
 CREATE POLICY "authenticated_read_profiles" ON user_profiles
   FOR SELECT TO authenticated USING (true);
 
--- Trigger: sincroniza após INSERT ou UPDATE em auth.users
 CREATE OR REPLACE FUNCTION public.sync_user_profile()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -46,7 +42,6 @@ CREATE TRIGGER on_auth_user_sync_profile
   AFTER INSERT OR UPDATE ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.sync_user_profile();
 
--- ─── invites ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS invites (
   id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id     uuid        NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -65,7 +60,6 @@ ALTER TABLE invites ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE invites TO authenticated;
 
--- Owner do grupo pode criar convites
 CREATE POLICY "owner_create_invite" ON invites
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -76,7 +70,6 @@ CREATE POLICY "owner_create_invite" ON invites
     )
   );
 
--- Membros do grupo veem os convites do grupo
 CREATE POLICY "members_read_invites" ON invites
   FOR SELECT TO authenticated
   USING (
@@ -85,8 +78,4 @@ CREATE POLICY "members_read_invites" ON invites
       WHERE gm.group_id = invites.group_id
         AND gm.user_id  = auth.uid()
     )
-  );
-
--- Leitura pública por token (para a página de aceite sem login)
--- Usada via service role no endpoint público — não precisa de policy anon aqui.
--- O endpoint /api/invite/:token usa service role para validar o token.
+  );;

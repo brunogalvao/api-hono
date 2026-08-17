@@ -105,4 +105,4 @@ CREATE POLICY "group_members_update_incomes" ON incomes
 
 CREATE POLICY "group_members_delete_incomes" ON incomes
   FOR DELETE TO authenticated
-  USING (public.is_group_member(group_id));
+  USING (public.is_group_member(group_id));;

@@ -1,4 +1,4 @@
--- Create tasks table
+-- Archived duplicate migration. Create tasks table
 create table if not exists tasks (
     id uuid primary key default gen_random_uuid (),
     title text not null,
