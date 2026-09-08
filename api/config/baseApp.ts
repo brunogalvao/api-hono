@@ -5,7 +5,27 @@ import { authMiddleware, type AuthVariables } from "./authMiddleware";
 
 export type { AuthVariables };
 
-const sharedMiddleware = [corsMiddleware, errorHandler, requestLogger] as const;
+async function securityHeaders(
+  c: Parameters<typeof corsMiddleware>[0],
+  next: () => Promise<void>,
+) {
+  await next();
+  c.res.headers.set("X-Content-Type-Options", "nosniff");
+  c.res.headers.set("X-Frame-Options", "DENY");
+  c.res.headers.set("Referrer-Policy", "no-referrer");
+  c.res.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()",
+  );
+  c.res.headers.set("Cache-Control", "no-store");
+}
+
+const sharedMiddleware = [
+  corsMiddleware,
+  securityHeaders,
+  errorHandler,
+  requestLogger,
+] as const;
 
 export function createBaseApp() {
   const app = new Hono();

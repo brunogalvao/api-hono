@@ -1,53 +1,38 @@
 export const config = { runtime: "edge" };
 
-import { getPublicSupabaseClient } from "./config/supabaseClient";
+import { createAuthApp } from "./config/baseApp";
 
-export const GET = async () => {
+const app = createAuthApp();
+
+app.get("/api/supabase-test", async (c) => {
+  if (process.env.DIAGNOSTICS_ENABLED !== "true") {
+    return c.json({ error: "Not found" }, 404);
+  }
+
   try {
-    const supabase = getPublicSupabaseClient();
-    
+    const supabase = c.get("supabase");
+
     // Teste simples de conexão
     const { data, error } = await supabase
-      .from('tasks')
-      .select('count')
+      .from("tasks")
+      .select("count")
       .limit(1);
-    
+
     if (error) {
-      return new Response(
-        JSON.stringify({ 
-          status: 'error', 
-          message: error.message,
-          hint: 'Verifique as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY'
-        }), 
-        { 
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        }
+      console.error("[supabase-test] query failed:", error.code);
+      return c.json(
+        { status: "error", message: "Connection test failed" },
+        500,
       );
     }
-    
-    return new Response(
-      JSON.stringify({ 
-        status: 'success', 
-        message: 'Conexão com Supabase estabelecida com sucesso!',
-        data: data
-      }), 
-      { 
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
-    
+
+    return c.json({ status: "success", rowVisible: data.length > 0 });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ 
-        status: 'error', 
-        message: error instanceof Error ? error.message : 'Erro desconhecido'
-      }), 
-      { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    console.error("[supabase-test] unexpected error:", error);
+    return c.json({ status: "error", message: "Connection test failed" }, 500);
   }
-}; 
+});
+
+export const GET = app.fetch;
+export const OPTIONS = app.fetch;
+export default app.fetch;

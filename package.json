@@ -18,12 +18,12 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@hono/node-server": "^1.14.1",
+    "@hono/node-server": "^1.19.17",
     "@hono/zod-openapi": "^0.19.6",
     "@hono/zod-validator": "^0.7.2",
-    "@supabase/supabase-js": "^2.49.4",
+    "@supabase/supabase-js": "^2.112.4",
     "dotenv": "^16.3.1",
-    "hono": "^4.7.9",
+    "hono": "^4.13.5",
     "hono-openapi": "^0.4.8",
     "openai": "^5.8.2",
     "resend": "^6.12.2",
@@ -35,5 +35,12 @@
     "tsx": "^4.7.0",
     "typescript": "^5.3.0",
     "vitest": "^2.1.9"
+  },
+  "pnpm": {
+    "overrides": {
+      "js-yaml": "^4.3.1",
+      "uuid": "^11.1.1",
+      "yaml": "^2.8.3"
+    }
   }
 }

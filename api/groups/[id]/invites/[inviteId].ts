@@ -1,5 +1,5 @@
 import { createAuthApp } from "../../../config/baseApp";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 export const config = { runtime: "edge" };
@@ -14,9 +14,9 @@ const updateInviteAccessSchema = z.object({
 });
 
 async function getOwnerGroup(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   groupId: string,
-  userId: string
+  userId: string,
 ) {
   const { data: group } = await supabase
     .from("groups")
@@ -48,7 +48,7 @@ app.patch("/api/groups/:id/invites/:inviteId", async (c) => {
     return c.json({ error: "Nenhuma permissão foi informada." }, 400);
   }
 
-  const group = await getOwnerGroup(supabase as any, groupId, user.id);
+  const group = await getOwnerGroup(supabase, groupId, user.id);
   if (!group) {
     return c.json({ error: "Apenas o owner pode atualizar convites." }, 403);
   }
@@ -56,7 +56,7 @@ app.patch("/api/groups/:id/invites/:inviteId", async (c) => {
   const serviceClient = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+    { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
   const { data: invite, error } = await serviceClient
@@ -65,19 +65,20 @@ app.patch("/api/groups/:id/invites/:inviteId", async (c) => {
     .eq("id", inviteId)
     .eq("group_id", groupId)
     .is("accepted_at", null)
-    .select(`
+    .select(
+      `
       id,
       email,
       name,
       phone,
-      token,
       expires_at,
       created_at,
       access_expenses,
       access_incomes,
       access_installments,
       access_advisor
-    `)
+    `,
+    )
     .single();
 
   if (error) return c.json({ error: error.message }, 500);
@@ -91,7 +92,7 @@ app.delete("/api/groups/:id/invites/:inviteId", async (c) => {
   const supabase = c.get("supabase");
   const user = c.get("user");
 
-  const group = await getOwnerGroup(supabase as any, groupId, user.id);
+  const group = await getOwnerGroup(supabase, groupId, user.id);
   if (!group) {
     return c.json({ error: "Apenas o owner pode revogar convites." }, 403);
   }
@@ -99,7 +100,7 @@ app.delete("/api/groups/:id/invites/:inviteId", async (c) => {
   const serviceClient = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+    { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
   const { error } = await serviceClient

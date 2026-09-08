@@ -37,23 +37,29 @@ app.post("/", async (c) => {
     }
 
     // Calcular totais por mês
-    const monthlyTotals: Record<string, MonthlyTotal> = incomes.reduce((acc, income) => {
-      const key = `${income.mes}_${income.ano}`;
-      if (!acc[key]) {
-        acc[key] = {
-          mes: income.mes,
-          ano: income.ano,
-          total: 0,
-          quantidade: 0
-        };
-      }
-      acc[key].total += parseFloat(income.valor);
-      acc[key].quantidade += 1;
-      return acc;
-    }, {} as Record<string, MonthlyTotal>);
+    const monthlyTotals: Record<string, MonthlyTotal> = incomes.reduce(
+      (acc, income) => {
+        const key = `${income.mes}_${income.ano}`;
+        if (!acc[key]) {
+          acc[key] = {
+            mes: income.mes,
+            ano: income.ano,
+            total: 0,
+            quantidade: 0,
+          };
+        }
+        acc[key].total += parseFloat(income.valor);
+        acc[key].quantidade += 1;
+        return acc;
+      },
+      {} as Record<string, MonthlyTotal>,
+    );
 
     const totalsArray = Object.values(monthlyTotals);
-    const totalAnual = totalsArray.reduce((sum: number, month: MonthlyTotal) => sum + month.total, 0);
+    const totalAnual = totalsArray.reduce(
+      (sum: number, month: MonthlyTotal) => sum + month.total,
+      0,
+    );
     const mediaMensal = totalAnual / 12;
 
     // Obter cotação do dólar (com timeout e fallback)
@@ -69,8 +75,8 @@ app.post("/", async (c) => {
       perfilUsuario: {
         rendaMensal: mediaMensal,
         estabilidade: incomes.length > 6 ? "Estável" : "Variável",
-        diversificacao: incomes.length > 3 ? "Boa" : "Limitada"
-      }
+        diversificacao: incomes.length > 3 ? "Boa" : "Limitada",
+      },
     };
 
     // Prompt para análise da IA
@@ -85,7 +91,7 @@ DADOS DO USUÁRIO:
 - Perfil: ${analysisData.perfilUsuario.estabilidade}
 
 RENDIMENTOS POR MÊS:
-${totalsArray.map((m: MonthlyTotal) => `- ${m.mes}/${m.ano}: R$ ${m.total.toFixed(2)}`).join('\n')}
+${totalsArray.map((m: MonthlyTotal) => `- ${m.mes}/${m.ano}: R$ ${m.total.toFixed(2)}`).join("\n")}
 
 ANÁLISE DETALHADA:
 1. Avalie a estabilidade dos rendimentos
@@ -133,15 +139,16 @@ Responda em JSON com a seguinte estrutura:
       messages: [
         {
           role: "system",
-          content: "Você é um consultor financeiro especializado em análise de rendimentos e recomendações de investimento. Seja objetivo, prático e baseado em dados reais."
+          content:
+            "Você é um consultor financeiro especializado em análise de rendimentos e recomendações de investimento. Seja objetivo, prático e baseado em dados reais.",
         },
         {
           role: "user",
-          content: prompt
-        }
+          content: prompt,
+        },
       ],
       temperature: 0.7,
-      max_tokens: 1500
+      max_tokens: 1500,
     });
 
     const aiResponse = completion.choices[0].message.content;
@@ -156,35 +163,35 @@ Responda em JSON com a seguinte estrutura:
         analise: {
           estabilidade: "Análise baseada nos dados fornecidos",
           tendencia: "Tendência calculada pelos dados",
-          risco: "Avaliação de risco"
+          risco: "Avaliação de risco",
         },
         recomendacoes: {
           dolar: {
             percentual: 30,
             justificativa: "Diversificação cambial recomendada",
-            risco: "Médio"
+            risco: "Médio",
           },
           poupanca: {
             percentual: 40,
             justificativa: "Segurança e liquidez",
-            risco: "Baixo"
+            risco: "Baixo",
           },
           outros: {
             sugestoes: ["Fundos de investimento", "CDB"],
-            justificativa: "Diversificação adicional"
-          }
+            justificativa: "Diversificação adicional",
+          },
         },
         estrategia: {
           curtoPrazo: "Manter reserva de emergência",
           medioPrazo: "Diversificar investimentos",
-          longoPrazo: "Foco em crescimento patrimonial"
+          longoPrazo: "Foco em crescimento patrimonial",
         },
         cotacaoDolar: cotacaoDolar,
-        resumo: aiResponse || "Análise financeira personalizada"
+        resumo: aiResponse || "Análise financeira personalizada",
       };
     }
 
-  return c.json({
+    return c.json({
       success: true,
       data: analysisResult,
       metadata: {
@@ -192,16 +199,17 @@ Responda em JSON com a seguinte estrutura:
         totalAnual,
         mediaMensal,
         cotacaoDolar,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
-
   } catch (error: any) {
     console.error("Erro na análise IA:", error);
-    return c.json({ 
-      error: "Erro na análise de investimentos",
-      details: error.message 
-    }, 500);
+    return c.json(
+      {
+        error: "Erro na análise de investimentos",
+      },
+      500,
+    );
   }
 });
 

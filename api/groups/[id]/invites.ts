@@ -22,19 +22,20 @@ app.get("/api/groups/:id/invites", async (c) => {
 
   const { data, error } = await supabase
     .from("invites")
-    .select(`
+    .select(
+      `
       id,
       email,
       name,
       phone,
-      token,
       expires_at,
       created_at,
       access_expenses,
       access_incomes,
       access_installments,
       access_advisor
-    `)
+    `,
+    )
     .eq("group_id", groupId)
     .is("accepted_at", null)
     .order("created_at", { ascending: false });

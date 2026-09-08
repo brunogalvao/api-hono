@@ -1,5 +1,4 @@
 import { createAuthApp } from "../../config/baseApp";
-import { createClient } from "@supabase/supabase-js";
 
 export const config = { runtime: "edge" };
 
@@ -8,77 +7,43 @@ const app = createAuthApp();
 // POST /api/invite/:token/accept — usuário autenticado aceita o convite
 app.post("/api/invite/:token/accept", async (c) => {
   const token = c.req.param("token");
-  const user = c.get("user");
+  const supabase = c.get("supabase");
 
-  const serviceClient = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-
-  // Valida o token
-  const { data: invite, error } = await serviceClient
-    .from("invites")
-    .select(`
-      id,
-      group_id,
-      email,
-      expires_at,
-      accepted_at,
-      access_expenses,
-      access_incomes,
-      access_installments,
-      access_advisor
-    `)
-    .eq("token", token)
-    .single();
-
-  if (error || !invite) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      token,
+    )
+  ) {
     return c.json({ error: "Convite não encontrado ou inválido." }, 404);
   }
 
-  if (invite.accepted_at) {
-    return c.json({ error: "Este convite já foi aceito." }, 410);
+  const { data, error } = await supabase.rpc("accept_legacy_group_invite", {
+    p_token: token,
+  });
+
+  if (error) {
+    console.error("[legacy-invite] RPC failed:", error.code);
+    return c.json({ error: "Não foi possível aceitar o convite." }, 500);
   }
 
-  if (new Date(invite.expires_at) < new Date()) {
-    return c.json({ error: "Este convite expirou." }, 410);
+  const result = data as { status?: string; group_id?: string } | null;
+  switch (result?.status) {
+    case "accepted_successfully":
+      return c.json({
+        message: "Convite aceito com sucesso.",
+        group_id: result.group_id,
+      });
+    case "accepted":
+      return c.json({ error: "Este convite já foi aceito." }, 410);
+    case "expired":
+      return c.json({ error: "Este convite expirou." }, 410);
+    case "email_mismatch":
+      return c.json({ error: "Este convite pertence a outro e-mail." }, 403);
+    case "already_member":
+      return c.json({ error: "Você já é membro deste grupo." }, 409);
+    default:
+      return c.json({ error: "Convite não encontrado ou inválido." }, 404);
   }
-
-  // Verifica se o usuário já é membro
-  const { data: existingMember } = await serviceClient
-    .from("group_members")
-    .select("user_id")
-    .eq("group_id", invite.group_id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (existingMember) {
-    return c.json({ error: "Você já é membro deste grupo." }, 409);
-  }
-
-  // Adiciona ao grupo como member
-  const { error: memberError } = await serviceClient
-    .from("group_members")
-    .insert([{
-      group_id: invite.group_id,
-      user_id: user.id,
-      role: "member",
-      access_expenses: invite.access_expenses ?? true,
-      access_incomes: invite.access_incomes ?? true,
-      access_installments: invite.access_installments ?? true,
-      access_advisor: invite.access_advisor ?? true,
-    }]);
-
-  if (memberError) return c.json({ error: memberError.message }, 500);
-
-  // Marca o convite como aceito (single-use)
-  await serviceClient
-    .from("invites")
-    .update({ accepted_at: new Date().toISOString() })
-    .eq("id", invite.id);
-
-  return c.json({ message: "Convite aceito com sucesso.", group_id: invite.group_id });
 });
 
 export const POST = app.fetch;
