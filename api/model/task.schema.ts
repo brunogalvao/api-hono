@@ -13,6 +13,14 @@ export const createTaskSchema = z.object({
   ano: z.number().int().min(2000, "Ano deve ser maior que 2000"),
   recorrente: z.boolean().default(false),
   parcela_total: z.number().int().min(2).max(360).optional(),
+}).superRefine((task, context) => {
+  if (task.recorrente && task.parcela_total) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["parcela_total"],
+      message: "Uma despesa não pode ser recorrente e parcelada ao mesmo tempo.",
+    });
+  }
 });
 
 export const updateTaskSchema = z.object({

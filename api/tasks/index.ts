@@ -1,5 +1,6 @@
 import { createAuthApp } from "../config/baseApp";
 import { createTaskSchema } from "../model/task.schema";
+import { createTask, listTasks } from "../../lib/tasks/task-service";
 
 export const config = { runtime: "edge" };
 
@@ -19,18 +20,7 @@ app.get("/api/tasks", async (c) => {
     return c.json({ error: "Parâmetros 'month' ou 'year' inválidos." }, 400);
   }
 
-  // Busca tasks do mês solicitado
-  const { data: monthTasks, error } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("mes", month)
-    .eq("ano", year)
-    .order("created_at", { ascending: false });
-
-  if (error) return c.json({ error: error.message }, 500);
-
-  return c.json(monthTasks);
+  return c.json(await listTasks(supabase, user.id, month, year));
 });
 
 app.post("/api/tasks", async (c) => {
@@ -44,131 +34,7 @@ app.post("/api/tasks", async (c) => {
     return c.json({ error: parsed.error.errors[0].message }, 400);
   }
 
-  let { data: group, error: groupError } = await supabase
-    .from("groups")
-    .select("id")
-    .eq("owner_id", user.id)
-    .eq("type", "personal")
-    .maybeSingle();
-
-  if (groupError) {
-    return c.json({ error: groupError.message }, 500);
-  }
-
-  if (!group) {
-    const { data: newGroup, error: createError } = await supabase
-      .from("groups")
-      .insert({ owner_id: user.id, type: "personal", name: "Pessoal" })
-      .select("id")
-      .single();
-
-    if (createError || !newGroup) {
-      return c.json({ error: "Erro ao criar grupo pessoal." }, 500);
-    }
-
-    group = newGroup;
-  }
-
-  const group_id = group.id;
-
-  const { data, error } = await supabase
-    .from("tasks")
-    .insert([{ ...parsed.data, user_id: user.id, group_id }])
-    .select();
-
-  if (error) return c.json({ error: error.message }, 500);
-
-  // Replicação imediata: cria cópias para todos os outros meses do ano
-  if (parsed.data.recorrente) {
-    const original = data[0];
-    const copies = [];
-
-    for (let m = 1; m <= 12; m++) {
-      if (m === original.mes) continue; // mês original já existe
-      copies.push({
-        user_id: user.id,
-        group_id,
-        title: original.title,
-        price: original.price,
-        done: "Pendente",
-        type: original.type,
-        mes: m,
-        ano: original.ano,
-        fixo_source_id: original.id,
-        recorrente: false,
-      });
-    }
-
-    if (copies.length > 0) {
-      await supabase.from("tasks").insert(copies);
-    }
-  }
-
-  // Compra parcelada: cria N-1 cópias mensais
-  if (parsed.data.parcela_total && parsed.data.parcela_total >= 2) {
-    const original = data[0];
-    const parcelaTotal = parsed.data.parcela_total;
-    const parcela_group_id = crypto.randomUUID();
-
-    // Atualiza a task original com parcela_numero: 1 e parcela_group_id
-    const { error: updateError } = await supabase
-      .from("tasks")
-      .update({ parcela_numero: 1, parcela_group_id, parcela_total: parcelaTotal })
-      .eq("id", original.id)
-      .eq("user_id", user.id);
-
-    if (updateError) return c.json({ error: updateError.message }, 500);
-
-    const basePrice = original.price ?? 0;
-    const parcelaBase = Math.floor((basePrice / parcelaTotal) * 100) / 100;
-    const totalBase = parcelaBase * (parcelaTotal - 1);
-    const parcelaFinal = Math.round((basePrice - totalBase) * 100) / 100;
-
-    function nextMonth(mes: number, ano: number, offset: number) {
-      const totalMonth = mes - 1 + offset; // 0-based
-      return {
-        mes: (totalMonth % 12) + 1,
-        ano: ano + Math.floor(totalMonth / 12),
-      };
-    }
-
-    const copies = [];
-    for (let i = 2; i <= parcelaTotal; i++) {
-      const { mes, ano } = nextMonth(original.mes, original.ano, i - 1);
-      const price = i === parcelaTotal ? parcelaFinal : parcelaBase;
-      copies.push({
-        user_id: user.id,
-        group_id,
-        title: original.title,
-        price,
-        done: "Pendente",
-        type: original.type,
-        mes,
-        ano,
-        recorrente: false,
-        fixo_source_id: null,
-        parcela_numero: i,
-        parcela_total: parcelaTotal,
-        parcela_group_id,
-      });
-    }
-
-    if (copies.length > 0) {
-      const { error: copiesError } = await supabase.from("tasks").insert(copies);
-      if (copiesError) return c.json({ error: copiesError.message }, 500);
-    }
-
-    // Retorna a task atualizada com os campos de parcela
-    const { data: updatedOriginal } = await supabase
-      .from("tasks")
-      .select()
-      .eq("id", original.id)
-      .single();
-
-    return c.json(updatedOriginal ?? original);
-  }
-
-  return c.json(data[0]);
+  return c.json(await createTask(supabase, user.id, parsed.data), 201);
 });
 
 export const GET = app.fetch;

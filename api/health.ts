@@ -1,71 +1,56 @@
-export const config = { runtime: "edge" };
-
+import { createBaseApp } from "./config/baseApp";
 import { getPublicSupabaseClient } from "./config/supabaseClient";
 
-export const GET = async () => {
-  const startTime = Date.now();
-  
+export const config = { runtime: "edge" };
+
+const app = createBaseApp();
+
+app.get("/api/health", async (c) => {
+  const startedAt = Date.now();
+
   try {
-    // Teste de conexão com Supabase via auth API (não depende de RLS)
     const supabase = getPublicSupabaseClient();
-    const { error: supabaseError } = await supabase.auth.getSession();
-    
-    const healthStatus = {
-      status: supabaseError ? 'degraded' : 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: Date.now() - startTime,
-      services: {
-        supabase: {
-          status: supabaseError ? 'error' : 'connected',
-          error: supabaseError?.message || null
-        }
-      },
-      environment: {
-        node: process.version,
-        platform: process.platform,
-        runtime: 'edge'
-      },
-      endpoints: [
-        '/api/ping',
-        '/api/test',
-        '/api/health',
-        '/api/supabase-test',
-        '/api/tasks',
-        '/api/incomes',
-        '/api/user'
-      ]
-    };
-    
-    const statusCode = supabaseError ? 503 : 200;
-    
-    return new Response(
-      JSON.stringify(healthStatus, null, 2),
+    const { error } = await supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .limit(1)
+      .abortSignal(AbortSignal.timeout(3_000));
+
+    const healthy = !error;
+    return c.json(
       {
-        status: statusCode,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      }
+        status: healthy ? "healthy" : "degraded",
+        timestamp: new Date().toISOString(),
+        duration_ms: Date.now() - startedAt,
+        services: {
+          database: {
+            status: healthy ? "connected" : "unavailable",
+            code: error?.code ?? null,
+          },
+        },
+      },
+      healthy ? 200 : 503,
     );
-    
   } catch (error) {
-    const errorResponse = {
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
-      uptime: Date.now() - startTime
-    };
-    
-    return new Response(
-      JSON.stringify(errorResponse, null, 2),
+    console.error(JSON.stringify({
+      level: "error",
+      event: "health_check_failed",
+      error: error instanceof Error ? error.message : "unknown_error",
+    }));
+    return c.json(
       {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      }
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        duration_ms: Date.now() - startedAt,
+        services: {
+          database: { status: "unavailable", code: "health_check_failed" },
+        },
+      },
+      503,
     );
   }
-}; 
+});
+
+export const GET = app.fetch;
+export const OPTIONS = app.fetch;
+export default app.fetch;

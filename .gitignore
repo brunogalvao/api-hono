@@ -6,3 +6,6 @@ dist
 .vercel
 load-tests/reports/
 supabase/.temp/
+
+# Graphify local knowledge graph and cache
+graphify-out/

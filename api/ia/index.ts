@@ -7,14 +7,6 @@ export const config = { runtime: "edge" };
 
 const app = createAuthApp();
 
-// Validar e inicializar OpenAI
-const openaiApiKey = process.env.OPENAI_API_KEY;
-if (!openaiApiKey) {
-  throw new Error("OPENAI_API_KEY é obrigatória");
-}
-
-const openai = new OpenAI({ apiKey: openaiApiKey });
-
 // GET para teste
 app.get("/", (c) => {
   return c.json({ message: "GET da rota /api/ia funcionando ✅" });
@@ -22,7 +14,16 @@ app.get("/", (c) => {
 
 // POST para análise de investimentos
 app.post("/", async (c) => {
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!openaiApiKey) {
+    return c.json(
+      { error: "Serviço de IA indisponível", error_code: "ai_not_configured" },
+      503,
+    );
+  }
+
   try {
+    const openai = new OpenAI({ apiKey: openaiApiKey });
     const supabase = c.get("supabase");
     const user = c.get("user");
 

@@ -17,7 +17,14 @@ export const authMiddleware = createMiddleware<{ Variables: AuthVariables }>(
     } = await getAuthenticatedUser(c);
 
     if (error || !user) {
-      return c.json({ error: "Usuário não autenticado" }, 401);
+      return c.json(
+        {
+          error: "Usuário não autenticado",
+          error_code: "unauthorized",
+          request_id: c.res.headers.get("X-Request-Id"),
+        },
+        401,
+      );
     }
 
     c.set("user", user);

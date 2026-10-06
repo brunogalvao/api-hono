@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { corsMiddleware } from "./apiHeader";
-import { errorHandler, requestLogger } from "./errorHandler";
+import {
+  errorHandler,
+  requestIdMiddleware,
+  requestLogger,
+} from "./errorHandler";
 import { authMiddleware, type AuthVariables } from "./authMiddleware";
 
 export type { AuthVariables };
@@ -21,6 +25,7 @@ async function securityHeaders(
 }
 
 const sharedMiddleware = [
+  requestIdMiddleware,
   corsMiddleware,
   securityHeaders,
   errorHandler,

@@ -3,13 +3,15 @@
     "target": "ES2020",
     "module": "ESNext",
     "types": ["node"],
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "strict": true,
     "esModuleInterop": true,
+    "noEmit": true,
+    "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
     }
   },
-  "include": ["api", "supabase", "dev.ts"]
+  "include": ["api", "lib", "server", "supabase", "dev.ts"]
 }

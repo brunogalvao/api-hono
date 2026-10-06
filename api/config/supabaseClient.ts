@@ -4,9 +4,6 @@ import type { Context } from "hono";
 // Validação das variáveis de ambiente no nível do módulo
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-// service role mantida apenas para validação de JWT em getAuthenticatedUser
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("SUPABASE_URL e SUPABASE_ANON_KEY são obrigatórios");
 }
@@ -48,9 +45,10 @@ export async function getAuthenticatedUser(c: Context) {
     return { data: { user: null }, error: { message: "Token não encontrado no header Authorization" } };
   }
 
-  // Cliente limpo: sem global.headers.Authorization — o SDK usa apenas apikey
-  // e auth.getUser(token) define seu próprio Authorization: Bearer {token}
-  const authClient = createClient(supabaseUrl!, supabaseServiceKey!, {
+  // A anon key basta para validar um JWT com getUser(token). Manter o
+  // service_role fora deste fluxo impede que autenticação e bypass de RLS
+  // compartilhem acidentalmente o mesmo cliente.
+  const authClient = createClient(supabaseUrl!, supabaseAnonKey!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -72,15 +70,4 @@ export function getPublicSupabaseClient() {
     throw new Error("SUPABASE_ANON_KEY é obrigatória");
   }
   return createClient(supabaseUrl!, supabaseAnonKey);
-}
-
-// Cliente com token manual (útil para rotas dinâmicas)
-export function createClientWithAuth(token: string | null = "") {
-  return createClient(supabaseUrl!, supabaseServiceKey!, {
-    global: {
-      headers: {
-        Authorization: token ?? "",
-      },
-    },
-  });
 }

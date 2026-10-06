@@ -1,5 +1,18 @@
 # API endpoints
 
+## Tasks
+
+Authenticated endpoints use the caller's Supabase JWT and preserve RLS.
+
+| Method | Path | Authentication | Purpose |
+|---|---|---|---|
+| `GET` | `/api/tasks?month=:month&year=:year` | Required | List the user's tasks for a month. |
+| `POST` | `/api/tasks` | Required | Create a task and its recurring or installment schedule. Recurrence and installments are mutually exclusive. |
+| `PUT` | `/api/tasks/:id` | Required | Update a task and synchronize recurring copies. |
+| `DELETE` | `/api/tasks/:id` | Required | Delete a task. `cancel_all=true` removes its installment group. |
+
+Installment values are split in cents so the sum of all installments is exactly the submitted total. Multi-write failures trigger compensating cleanup; a database transaction/RPC remains the preferred future hardening for strict atomicity.
+
 ## Secure workspace invitations
 
 All responses are JSON with `Cache-Control: no-store` semantics at the application boundary. Authenticated endpoints require `Authorization: Bearer <Supabase access token>`.

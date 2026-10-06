@@ -68,7 +68,7 @@ Uma API completa para gerenciamento financeiro pessoal com análise inteligente 
 ## 🚀 Deploy
 
 ### Pré-requisitos
-- Node.js 18+
+- Node.js 24+
 - pnpm (recomendado)
 - Conta no Supabase
 - Conta no Vercel
@@ -78,6 +78,8 @@ Uma API completa para gerenciamento financeiro pessoal com análise inteligente 
 ```env
 SUPABASE_URL=sua_url_do_supabase
 SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
+# Exclusiva para operações administrativas explícitas, como convites.
+# Nunca é usada no cliente autenticado comum nem deve ir para o frontend.
 SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_do_supabase
 GEMINI_API_KEY=sua_chave_do_google_gemini
 ```
@@ -188,21 +190,33 @@ curl -H "Authorization: Bearer seu_token" \
 api-hono/
 ├── api/
 │   ├── config/          # Configurações (Supabase, headers)
-│   ├── incomes/         # Gestão de rendimentos
-│   ├── tasks/           # Gestão de tarefas
+│   ├── incomes/         # Handlers HTTP de rendimentos
+│   ├── tasks/           # Handlers HTTP finos de tarefas
 │   ├── ia/              # Análise inteligente
 │   ├── utils/           # Utilitários (formatação, validação)
 │   └── docs-ui.ts       # Documentação interativa
-├── dev.ts               # Servidor de desenvolvimento
-├── app.ts               # Configuração principal
+├── lib/                  # Serviços e regras de negócio
+├── server/app.ts         # Compõe localmente os mesmos handlers da Vercel
+├── dev.ts                # Inicialização do servidor de desenvolvimento
+├── tests/                # Testes unitários e smoke tests explícitos
 └── package.json
 ```
+
+### Limites arquiteturais
+
+- `api/` recebe HTTP, valida entrada e transforma resultados em respostas.
+- `lib/` contém regras de negócio reutilizáveis e testáveis.
+- Operações autenticadas usam `SUPABASE_ANON_KEY` com o JWT do usuário para preservar RLS.
+- `SUPABASE_SERVICE_ROLE_KEY` fica restrita a fluxos administrativos explícitos que verificam autorização antes do acesso privilegiado.
+- `dev.ts` não implementa endpoints: ele monta os mesmos handlers serverless usados em produção.
+- Fluxos externos opcionais, como IA, validam suas próprias chaves somente quando chamados e não impedem o restante da API de iniciar.
 
 ### Scripts Disponíveis
 ```bash
 pnpm dev           # Desenvolvimento local
-pnpm build         # Build para produção
-pnpm start         # Executar build
+pnpm typecheck     # Verificação TypeScript
+pnpm build         # Gate de build/typecheck para produção
+pnpm start         # Executar a API local
 pnpm test          # Testes unitários (vitest, one-shot)
 pnpm test:smoke    # Smoke tests contra a URL de produção
 ```
