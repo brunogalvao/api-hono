@@ -33,7 +33,12 @@ begin
         nullif(new.raw_user_meta_data->>'name', ''),
         public.profiles.full_name
       ),
-      avatar_url = new.raw_user_meta_data->>'avatar_url',
+      -- A custom avatar saved by the app is canonical. OAuth providers may
+      -- refresh raw_user_meta_data on login, so they must not overwrite it.
+      avatar_url = coalesce(
+        public.profiles.avatar_url,
+        new.raw_user_meta_data->>'avatar_url'
+      ),
       updated_at = now()
     where id = new.id;
   end if;
@@ -43,6 +48,17 @@ end;
 $$;
 
 revoke execute on function public.sync_user_profile() from public, anon, authenticated;
+
+-- Seed the canonical profile only when it has no avatar yet. From this point
+-- onward, profile changes are written directly to public.profiles by the app.
+update public.profiles as profile
+set
+  avatar_url = auth_profile.avatar_url,
+  updated_at = now()
+from public.user_profiles as auth_profile
+where profile.id = auth_profile.id
+  and profile.avatar_url is null
+  and auth_profile.avatar_url is not null;
 
 -- New avatar paths are scoped by user: avatars/{auth.uid()}/{uuid}.{ext}.
 insert into storage.buckets (
