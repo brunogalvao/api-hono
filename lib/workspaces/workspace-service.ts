@@ -15,7 +15,24 @@ const KNOWN_CODES = [
   "invalid_workspace_name",
 ] as const;
 
+const MANAGEMENT_CODES = [
+  "workspace_not_found",
+  "workspace_delete_forbidden",
+  "last_owned_workspace",
+  "workspace_owner_cannot_leave",
+  "workspace_membership_not_found",
+] as const;
+
 export type WorkspaceCreationErrorCode = (typeof KNOWN_CODES)[number] | "workspace_creation_failed";
+export type WorkspaceManagementErrorCode =
+  | (typeof MANAGEMENT_CODES)[number]
+  | "workspace_management_failed";
+
+export type WorkspaceLifecycleResult = {
+  status: "deleted" | "left";
+  workspace_id: string;
+  workspace_name: string;
+};
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -49,6 +66,16 @@ export function workspaceCreationErrorCode(error: unknown): WorkspaceCreationErr
   return KNOWN_CODES.find((code) => message.includes(code)) ?? "workspace_creation_failed";
 }
 
+export function workspaceManagementErrorCode(
+  error: unknown,
+): WorkspaceManagementErrorCode {
+  const message = error && typeof error === "object" && "message" in error
+    ? String(error.message)
+    : "";
+  return MANAGEMENT_CODES.find((code) => message.includes(code)) ??
+    "workspace_management_failed";
+}
+
 export async function createWorkspace(
   actorId: string,
   name: string,
@@ -63,4 +90,34 @@ export async function createWorkspace(
     throw new Error("invalid_workspace_response");
   }
   return data as CreatedWorkspace;
+}
+
+async function runLifecycleMutation(
+  operation: "delete_workspace_for_owner" | "leave_workspace",
+  actorId: string,
+  workspaceId: string,
+): Promise<WorkspaceLifecycleResult> {
+  const { data, error } = await serviceClient().rpc(operation, {
+    p_actor_id: actorId,
+    p_workspace_id: workspaceId,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== "object") {
+    throw new Error("invalid_workspace_lifecycle_response");
+  }
+  return data as WorkspaceLifecycleResult;
+}
+
+export function deleteOwnedWorkspace(
+  actorId: string,
+  workspaceId: string,
+): Promise<WorkspaceLifecycleResult> {
+  return runLifecycleMutation("delete_workspace_for_owner", actorId, workspaceId);
+}
+
+export function leaveWorkspace(
+  actorId: string,
+  workspaceId: string,
+): Promise<WorkspaceLifecycleResult> {
+  return runLifecycleMutation("leave_workspace", actorId, workspaceId);
 }
