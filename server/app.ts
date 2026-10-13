@@ -28,6 +28,7 @@ import userHandler from "../api/user/index";
 import workspaceInviteAdminHandler from "../api/workspace-invites-admin";
 import workspaceInviteAuthHandler from "../api/workspace-invites/[...path]";
 import docsHandler from "../api/docs-ui";
+import dollarRateHandler from "../api/currency/usd-brl";
 import { GET as getApiHome } from "../api/index";
 import { GET as getOpenApi } from "../api/openapi";
 import pingHandler from "../api/ping";
@@ -53,6 +54,7 @@ export function createLocalApp() {
   app.all("/api/docs", (c) => docsHandler(c.req.raw));
   app.all("/api/health", (c) => healthHandler(c.req.raw));
   app.all("/api/supabase-test", (c) => supabaseTestHandler(c.req.raw));
+  app.all("/api/currency/usd-brl", (c) => dollarRateHandler(c.req.raw));
 
   app.all("/api/tasks/total", (c) => totalTasksHandler(c.req.raw));
   app.all("/api/tasks/total-price", (c) => totalPriceHandler(c.req.raw));

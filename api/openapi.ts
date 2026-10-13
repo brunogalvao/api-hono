@@ -83,6 +83,19 @@ const spec = {
           ano: { type: "integer", minimum: 2000 },
         },
       },
+      DollarRateQuote: {
+        type: "object",
+        required: ["status", "rate", "source", "sourceLabel", "sourceUrl", "fetchedAt"],
+        properties: {
+          status: { type: "string", enum: ["available"] },
+          rate: { type: "number", example: 4.989911 },
+          source: { type: "string", enum: ["exchange-rate-api", "awesome-api"] },
+          sourceLabel: { type: "string", example: "ExchangeRate-API" },
+          sourceUrl: { type: "string", format: "uri" },
+          marketUpdatedAt: { type: "string", format: "date-time", nullable: true },
+          fetchedAt: { type: "string", format: "date-time" },
+        },
+      },
     },
   },
   paths: {
@@ -130,6 +143,24 @@ const spec = {
             },
           },
           "503": { description: "Serviço degradado" },
+        },
+      },
+    },
+    "/api/currency/usd-brl": {
+      get: {
+        tags: ["Câmbio"],
+        summary: "Cotação de referência USD/BRL",
+        description: "Retorna uma taxa indicativa, sua fonte e o horário de atualização. Não inclui IOF nem spread.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "Cotação disponível",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/DollarRateQuote" } } },
+          },
+          "503": {
+            description: "Fontes de cotação indisponíveis",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
         },
       },
     },

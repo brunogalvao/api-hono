@@ -10,7 +10,7 @@ app.post("/api/ia/analise-investimento", async (c) => {
   const user = c.get("user");
 
   const requestBody = await c.req.json();
-  const { mes, ano } = requestBody;
+  const { mes, ano, workspaceId } = requestBody;
 
   const currentDate = new Date();
   const targetMonth = mes || currentDate.getMonth() + 1;
@@ -20,13 +20,19 @@ app.post("/api/ia/analise-investimento", async (c) => {
   const lastDay = new Date(targetYear, targetMonth, 0).getDate();
   const end = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
+  let transactionsQuery = supabase
+    .from("transactions")
+    .select("type, status, amount")
+    .eq("created_by", user.id)
+    .gte("date", start)
+    .lte("date", end);
+
+  if (typeof workspaceId === "string" && workspaceId.length > 0) {
+    transactionsQuery = transactionsQuery.eq("workspace_id", workspaceId);
+  }
+
   const [transactionsResult, cotacaoDolar] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("type, status, amount")
-      .eq("created_by", user.id)
-      .gte("date", start)
-      .lte("date", end),
+    transactionsQuery,
     getDolarRate(),
   ]);
 
@@ -51,8 +57,13 @@ app.post("/api/ia/analise-investimento", async (c) => {
     .reduce((sum, tx) => sum + tx.amount, 0);
 
   const totalTarefas = tarefasPagas + tarefasPendentes;
-  const percentualGasto = rendimentoMes > 0 ? (totalTarefas / rendimentoMes) * 100 : 0;
-  const percentualDisponivel = 100 - percentualGasto;
+  const percentualGasto =
+    rendimentoMes > 0
+      ? (totalTarefas / rendimentoMes) * 100
+      : totalTarefas > 0
+        ? 100
+        : 0;
+  const percentualDisponivel = Math.max(0, 100 - percentualGasto);
   const resultadoLiquido = rendimentoMes - tarefasPagas;
   const valorLivre = rendimentoMes - totalTarefas;
 
