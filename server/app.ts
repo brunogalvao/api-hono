@@ -27,6 +27,7 @@ import totalTasksHandler from "../api/tasks/total";
 import userHandler from "../api/user/index";
 import workspaceInviteAdminHandler from "../api/workspace-invites-admin";
 import workspaceInviteAuthHandler from "../api/workspace-invites/[...path]";
+import workspacesHandler from "../api/workspaces/index";
 import docsHandler from "../api/docs-ui";
 import dollarRateHandler from "../api/currency/usd-brl";
 import { GET as getApiHome } from "../api/index";
@@ -86,6 +87,7 @@ export function createLocalApp() {
 
   app.all("/api/invite/:token/accept", (c) => acceptInviteHandler(c.req.raw));
   app.all("/api/invite/:token", (c) => inviteHandler(c.req.raw));
+  app.all("/api/workspaces", (c) => workspacesHandler(c.req.raw));
   app.all("/api/workspaces/:id/invites/:inviteId/resend", (c) => workspaceInviteAdminHandler(c.req.raw));
   app.all("/api/workspaces/:id/invites/:inviteId", (c) => workspaceInviteAdminHandler(c.req.raw));
   app.all("/api/workspaces/:id/invites", (c) => workspaceInviteAdminHandler(c.req.raw));
